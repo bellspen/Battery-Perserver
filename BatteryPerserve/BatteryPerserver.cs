@@ -92,7 +92,7 @@ namespace BatteryPerserve
             while (Watch_Pwr) //While true
             {
                 Pwr_Info = SystemInformation.PowerStatus; //Get Power Status
-                Battery_Percentage.Text = (Pwr_Info.BatteryLifePercent * 100).ToString();
+                Battery_Percentage.Text = (Pwr_Info.BatteryLifePercent * 100).ToString(); //Check about accessing from other threads
 
                 if (Pwr_Info.PowerLineStatus.ToString() == "Online")
                     Battery_LineStatus.Text = "Charging";

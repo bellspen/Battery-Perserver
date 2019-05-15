@@ -102,10 +102,12 @@
             // 
             // Battery_Normal_Charge_Time
             // 
-            this.Battery_Normal_Charge_Time.Format = System.Windows.Forms.DateTimePickerFormat.Time;
+            this.Battery_Normal_Charge_Time.CustomFormat = "h:m:tt";
+            this.Battery_Normal_Charge_Time.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.Battery_Normal_Charge_Time.ImeMode = System.Windows.Forms.ImeMode.NoControl;
             this.Battery_Normal_Charge_Time.Location = new System.Drawing.Point(6, 69);
             this.Battery_Normal_Charge_Time.Name = "Battery_Normal_Charge_Time";
+            this.Battery_Normal_Charge_Time.ShowUpDown = true;
             this.Battery_Normal_Charge_Time.Size = new System.Drawing.Size(100, 20);
             this.Battery_Normal_Charge_Time.TabIndex = 7;
             this.Battery_Normal_Charge_Time.Value = new System.DateTime(2019, 5, 14, 17, 45, 0, 0);

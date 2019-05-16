@@ -15,11 +15,10 @@
         {
             //Stop Power Watching
             Watch_Pwr = false;
-            Pwr_Watching.Join();
+            Pwr_Watching.Abort();
             if (SP0.IsOpen)
                 ClosePort();
-
-
+           
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -41,6 +40,7 @@
             this.Battery_Percentage = new System.Windows.Forms.TextBox();
             this.Battery_LineStatus = new System.Windows.Forms.TextBox();
             this.Panel_Battery_Info = new System.Windows.Forms.Panel();
+            this.button_OptmizeBattery = new System.Windows.Forms.Button();
             this.button_DefaultBatteryRange = new System.Windows.Forms.Button();
             this.BatteryMax = new System.Windows.Forms.NumericUpDown();
             this.BatteryMin = new System.Windows.Forms.NumericUpDown();
@@ -49,11 +49,11 @@
             this.label_BatteryRange = new System.Windows.Forms.Label();
             this.checkBox_OptimizeChargeTime = new System.Windows.Forms.CheckBox();
             this.Battery_OptimizeChargeTime = new System.Windows.Forms.DateTimePicker();
-            this.checkBox_NormalChargeTime = new System.Windows.Forms.CheckBox();
             this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Panel_Connection = new System.Windows.Forms.Panel();
             this.label_ComSelection = new System.Windows.Forms.Label();
-            this.button_OptmizeBattery = new System.Windows.Forms.Button();
+            this.label_StartCharge = new System.Windows.Forms.Label();
+            this.label_EndCharge = new System.Windows.Forms.Label();
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
@@ -70,6 +70,7 @@
             // 
             // Com_Con_Dis
             // 
+            this.Com_Con_Dis.ForeColor = System.Drawing.Color.Black;
             this.Com_Con_Dis.Location = new System.Drawing.Point(129, 30);
             this.Com_Con_Dis.Name = "Com_Con_Dis";
             this.Com_Con_Dis.Size = new System.Drawing.Size(75, 23);
@@ -106,6 +107,8 @@
             // 
             // Panel_Battery_Info
             // 
+            this.Panel_Battery_Info.Controls.Add(this.label_EndCharge);
+            this.Panel_Battery_Info.Controls.Add(this.label_StartCharge);
             this.Panel_Battery_Info.Controls.Add(this.button_OptmizeBattery);
             this.Panel_Battery_Info.Controls.Add(this.button_DefaultBatteryRange);
             this.Panel_Battery_Info.Controls.Add(this.BatteryMax);
@@ -115,7 +118,6 @@
             this.Panel_Battery_Info.Controls.Add(this.label_BatteryRange);
             this.Panel_Battery_Info.Controls.Add(this.checkBox_OptimizeChargeTime);
             this.Panel_Battery_Info.Controls.Add(this.Battery_OptimizeChargeTime);
-            this.Panel_Battery_Info.Controls.Add(this.checkBox_NormalChargeTime);
             this.Panel_Battery_Info.Controls.Add(this.Battery_NormalChargeTime);
             this.Panel_Battery_Info.Controls.Add(this.Battery_Info);
             this.Panel_Battery_Info.Controls.Add(this.Battery_LineStatus);
@@ -125,8 +127,22 @@
             this.Panel_Battery_Info.Size = new System.Drawing.Size(378, 208);
             this.Panel_Battery_Info.TabIndex = 7;
             // 
+            // button_OptmizeBattery
+            // 
+            this.button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
+            this.button_OptmizeBattery.Enabled = false;
+            this.button_OptmizeBattery.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.button_OptmizeBattery.Location = new System.Drawing.Point(4, 54);
+            this.button_OptmizeBattery.Name = "button_OptmizeBattery";
+            this.button_OptmizeBattery.Size = new System.Drawing.Size(55, 23);
+            this.button_OptmizeBattery.TabIndex = 19;
+            this.button_OptmizeBattery.Text = "OFF";
+            this.button_OptmizeBattery.UseVisualStyleBackColor = false;
+            this.button_OptmizeBattery.Click += new System.EventHandler(this.button_OptmizeBattery_Click);
+            // 
             // button_DefaultBatteryRange
             // 
+            this.button_DefaultBatteryRange.ForeColor = System.Drawing.Color.Black;
             this.button_DefaultBatteryRange.Location = new System.Drawing.Point(314, 28);
             this.button_DefaultBatteryRange.Name = "button_DefaultBatteryRange";
             this.button_DefaultBatteryRange.Size = new System.Drawing.Size(58, 19);
@@ -201,9 +217,9 @@
             this.checkBox_OptimizeChargeTime.AutoSize = true;
             this.checkBox_OptimizeChargeTime.Location = new System.Drawing.Point(6, 83);
             this.checkBox_OptimizeChargeTime.Name = "checkBox_OptimizeChargeTime";
-            this.checkBox_OptimizeChargeTime.Size = new System.Drawing.Size(118, 17);
+            this.checkBox_OptimizeChargeTime.Size = new System.Drawing.Size(151, 17);
             this.checkBox_OptimizeChargeTime.TabIndex = 10;
-            this.checkBox_OptimizeChargeTime.Text = "Optimize Charge at:";
+            this.checkBox_OptimizeChargeTime.Text = "Optimize Charge Schedule";
             this.checkBox_OptimizeChargeTime.UseVisualStyleBackColor = true;
             this.checkBox_OptimizeChargeTime.CheckedChanged += new System.EventHandler(this.checkBox_OptimizeChargeTime_CheckedChanged);
             // 
@@ -212,23 +228,12 @@
             this.Battery_OptimizeChargeTime.CustomFormat = "h:mm:tt";
             this.Battery_OptimizeChargeTime.Enabled = false;
             this.Battery_OptimizeChargeTime.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
-            this.Battery_OptimizeChargeTime.Location = new System.Drawing.Point(6, 103);
+            this.Battery_OptimizeChargeTime.Location = new System.Drawing.Point(67, 103);
             this.Battery_OptimizeChargeTime.Name = "Battery_OptimizeChargeTime";
             this.Battery_OptimizeChargeTime.ShowUpDown = true;
             this.Battery_OptimizeChargeTime.Size = new System.Drawing.Size(72, 20);
             this.Battery_OptimizeChargeTime.TabIndex = 9;
             this.Battery_OptimizeChargeTime.Value = new System.DateTime(2019, 5, 15, 9, 0, 0, 0);
-            // 
-            // checkBox_NormalChargeTime
-            // 
-            this.checkBox_NormalChargeTime.AutoSize = true;
-            this.checkBox_NormalChargeTime.Location = new System.Drawing.Point(130, 83);
-            this.checkBox_NormalChargeTime.Name = "checkBox_NormalChargeTime";
-            this.checkBox_NormalChargeTime.Size = new System.Drawing.Size(111, 17);
-            this.checkBox_NormalChargeTime.TabIndex = 8;
-            this.checkBox_NormalChargeTime.Text = "Normal Charge at:";
-            this.checkBox_NormalChargeTime.UseVisualStyleBackColor = true;
-            this.checkBox_NormalChargeTime.CheckedChanged += new System.EventHandler(this.checkBox1_NormalChargeTime_CheckedChanged);
             // 
             // Battery_NormalChargeTime
             // 
@@ -236,7 +241,7 @@
             this.Battery_NormalChargeTime.Enabled = false;
             this.Battery_NormalChargeTime.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.Battery_NormalChargeTime.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.Battery_NormalChargeTime.Location = new System.Drawing.Point(130, 103);
+            this.Battery_NormalChargeTime.Location = new System.Drawing.Point(67, 129);
             this.Battery_NormalChargeTime.Name = "Battery_NormalChargeTime";
             this.Battery_NormalChargeTime.ShowUpDown = true;
             this.Battery_NormalChargeTime.Size = new System.Drawing.Size(73, 20);
@@ -262,25 +267,33 @@
             this.label_ComSelection.TabIndex = 3;
             this.label_ComSelection.Text = "Select the corresponding com";
             // 
-            // button_OptmizeBattery
+            // label_StartCharge
             // 
-            this.button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-            this.button_OptmizeBattery.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.button_OptmizeBattery.Location = new System.Drawing.Point(4, 54);
-            this.button_OptmizeBattery.Name = "button_OptmizeBattery";
-            this.button_OptmizeBattery.Size = new System.Drawing.Size(55, 23);
-            this.button_OptmizeBattery.TabIndex = 19;
-            this.button_OptmizeBattery.Text = "OFF";
-            this.button_OptmizeBattery.UseVisualStyleBackColor = false;
-            this.button_OptmizeBattery.Click += new System.EventHandler(this.button_OptmizeBattery_Click);
+            this.label_StartCharge.AutoSize = true;
+            this.label_StartCharge.Location = new System.Drawing.Point(3, 109);
+            this.label_StartCharge.Name = "label_StartCharge";
+            this.label_StartCharge.Size = new System.Drawing.Size(58, 13);
+            this.label_StartCharge.TabIndex = 20;
+            this.label_StartCharge.Text = "Start Time:";
+            // 
+            // label_EndCharge
+            // 
+            this.label_EndCharge.AutoSize = true;
+            this.label_EndCharge.Location = new System.Drawing.Point(3, 135);
+            this.label_EndCharge.Name = "label_EndCharge";
+            this.label_EndCharge.Size = new System.Drawing.Size(58, 13);
+            this.label_EndCharge.TabIndex = 21;
+            this.label_EndCharge.Text = "Stop Time:";
             // 
             // BatteryPerserver
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.ClientSize = new System.Drawing.Size(636, 237);
             this.Controls.Add(this.Panel_Connection);
             this.Controls.Add(this.Panel_Battery_Info);
+            this.ForeColor = System.Drawing.Color.White;
             this.Name = "BatteryPerserver";
             this.Text = "Battery Saver";
             this.Panel_Battery_Info.ResumeLayout(false);
@@ -301,7 +314,6 @@
         private System.Windows.Forms.TextBox Battery_LineStatus;
         private System.Windows.Forms.Panel Panel_Battery_Info;
         private System.Windows.Forms.DateTimePicker Battery_NormalChargeTime;
-        private System.Windows.Forms.CheckBox checkBox_NormalChargeTime;
         private System.Windows.Forms.DateTimePicker Battery_OptimizeChargeTime;
         private System.Windows.Forms.CheckBox checkBox_OptimizeChargeTime;
         private System.Windows.Forms.Button button_DefaultBatteryRange;
@@ -313,6 +325,8 @@
         private System.Windows.Forms.Panel Panel_Connection;
         private System.Windows.Forms.Label label_ComSelection;
         private System.Windows.Forms.Button button_OptmizeBattery;
+        private System.Windows.Forms.Label label_EndCharge;
+        private System.Windows.Forms.Label label_StartCharge;
     }
 }
 

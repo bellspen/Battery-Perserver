@@ -10,11 +10,12 @@ using System.Windows.Forms;
 using System.IO.Ports;
 using System.Threading;
 
+
 namespace BatteryPerserve
 {
     public partial class BatteryPerserver : Form
     {
-        private delegate void SafeCallDelegate(string text);
+        private delegate void SafeCallDelegate(string text, string text2);
         private SerialPort SP0;
         private PowerStatus Pwr_Info;
         private Thread Pwr_Watching;
@@ -61,6 +62,7 @@ namespace BatteryPerserve
                 SP0.Open(); //open serial port
                 //MessageBox.Show("Port Opened Successfully !");
                 Com_Con_Dis.Text = "Disconnect";
+                button_OptmizeBattery.Enabled = true;
             }
             catch
             {
@@ -69,18 +71,23 @@ namespace BatteryPerserve
 
         } //END OpenPort
 
+        private void ClearAllGpio()
+        {
+            SP0.DiscardInBuffer(); //discard input buffer
+            SP0.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
+            System.Threading.Thread.Sleep(200); //system sleep
+            SP0.DiscardOutBuffer(); //discard output buffer
+        }
+
         private void ClosePort()
         {
             try
             {
-                SP0.DiscardInBuffer(); //discard input buffer
-                SP0.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
-                System.Threading.Thread.Sleep(200); //system sleep
-                SP0.DiscardOutBuffer(); //discard output buffer
-
+                ClearAllGpio();
                 SP0.Close(); //close serial port
                 //MessageBox.Show("Port Closed Successfully !");
                 Com_Con_Dis.Text = "Connect";
+                button_OptmizeBattery.Enabled = false;
             }
             catch
             {
@@ -89,17 +96,29 @@ namespace BatteryPerserve
 
         } //END ClosePort
 
-        private void UpdatePowerInfo(string text)
+        private void UpdatePowerInfo(string percent, string charge_status)
         {
-            if (Battery_Percentage.InvokeRequired)
+            if (Battery_Percentage.InvokeRequired || Battery_LineStatus.InvokeRequired)
             {
                 var d = new SafeCallDelegate(UpdatePowerInfo);
-                Invoke(d, new object[] { text });
+                Invoke(d, new object[] { percent, charge_status });
             }
             else
-                Battery_Percentage.Text = text; //Check about accessing from other threads
+            {
+                Battery_Percentage.Text = percent; 
+                Battery_LineStatus.Text = charge_status;
+            }
 
         } //END UpdatePowerInfo
+
+        private bool CheckOptimizationSchedule()
+        {
+            //Check if Optimize checkbox is checked and also if it is time to always stay charged
+            if (checkBox_OptimizeChargeTime.Checked == false || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay))
+                return true;
+            else
+                return false;
+        } //END CheckOptimizationSchedule
 
         private void PowerWatch()
         {
@@ -107,24 +126,24 @@ namespace BatteryPerserve
             {
                 //Update Battery Info
                 Pwr_Info = SystemInformation.PowerStatus; //Get Power Status
-
-                UpdatePowerInfo((Pwr_Info.BatteryLifePercent * 100).ToString() + "%");
                                                
-                if (Pwr_Info.PowerLineStatus.ToString() == "Online") //fix same as above
-                    Battery_LineStatus.Text = "Charging";
+                if (Pwr_Info.PowerLineStatus.ToString() == "Online") 
+                    UpdatePowerInfo((Pwr_Info.BatteryLifePercent * 100).ToString() + "%", "Charging");              
                 else
-                    Battery_LineStatus.Text = "Dis-Charging";
+                    UpdatePowerInfo((Pwr_Info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging");
+                
 
                 //Check if able to optimize battery
                 if (button_OptmizeBattery.Text == "ON")
                 {
-                    if ((checkBox_OptimizeChargeTime.Checked == false || Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay) && (checkBox_NormalChargeTime.Checked == false || Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay)) //Check if checkbox is checked and also if it is time to always stay charged
+                    //Check if Optimize checkbox is checked and also if it is time to always stay charged
+                    if (CheckOptimizationSchedule()) 
                     {
 
                         if (SP0.IsOpen) //Check Port Open && not
                         {
                             if (Pwr_Info.BatteryLifePercent >= 0.42)
-                            {
+                            { //combine if stmt's
                                 if (Pwr_Info.PowerLineStatus.ToString() == "Online")
                                 {
                                     SP0.DiscardInBuffer(); //discard input buffer
@@ -148,6 +167,8 @@ namespace BatteryPerserve
                         } //END Check Port
 
                     } //END Check Charge times
+                    else
+                        ClearAllGpio();
 
                 } //END Checking Optimizaion active
 
@@ -156,22 +177,18 @@ namespace BatteryPerserve
 
         } //END PowerWatch
 
-        private void checkBox1_NormalChargeTime_CheckedChanged(object sender, EventArgs e)
-        {
-            if (Battery_NormalChargeTime.Enabled == false)
-                Battery_NormalChargeTime.Enabled = true;
-            else //true
-                Battery_NormalChargeTime.Enabled = false;
-
-
-        } //END CheckBox
-
         private void checkBox_OptimizeChargeTime_CheckedChanged(object sender, EventArgs e)
         {
             if (Battery_OptimizeChargeTime.Enabled == false)
+            {
                 Battery_OptimizeChargeTime.Enabled = true;
+                Battery_NormalChargeTime.Enabled = true;
+            }
             else //true
+            {
                 Battery_OptimizeChargeTime.Enabled = false;
+                Battery_NormalChargeTime.Enabled = false;
+            }
         } //END CheckBox
 
         private void button_DefaultBatteryRange_Click(object sender, EventArgs e)
@@ -191,10 +208,11 @@ namespace BatteryPerserve
             {
                 button_OptmizeBattery.Text = "OFF";
                 button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-            }
-                
+                ClearAllGpio();
+            }               
+        } //END Optimize Battery
 
 
-        }
+
     } //END Class
 } //END Namespace

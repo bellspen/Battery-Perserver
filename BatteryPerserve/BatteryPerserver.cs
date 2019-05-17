@@ -9,20 +9,23 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO.Ports;
 using System.Threading;
-
+using Microsoft.Win32;
+using System.IO;
 
 namespace BatteryPerserve
 {
-    public partial class BatteryPerserver : Form
+    public partial class BatteryOptimizer : Form
     {
+        //private Microsoft.Win32.RegistryKey key;
         private delegate void SafeCallDelegate(string text, string text2);
         private SerialPort SP0;
+        private string LastConnectedCom;
         private PowerStatus Pwr_Info;
         private Thread Pwr_Watching;
         private bool Watch_Pwr;
         private bool Pwr_Control;
 
-        public BatteryPerserver()
+        public BatteryOptimizer()
         {
             InitializeComponent();
             Find_Coms();
@@ -32,6 +35,42 @@ namespace BatteryPerserve
             Pwr_Watching = new Thread(PowerWatch);
             Pwr_Watching.Start();
         } //END Constructor
+
+        private void InitialRegistryCheck()
+        {
+            RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
+            if (key1.GetValue("BatteryOptimizer") != null)
+                Program_Settings.SetItemChecked(0, true);
+            key1.Close();
+
+            RegistryKey key2 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
+            if ((bool)key2.GetValue("Auto Connect & Start Optimizing") == true)
+                Program_Settings.SetItemChecked(1, true);
+
+            //Check key2, key3, key4, in InitializeRegistry as well
+
+        } //END InitialRegistryCheck
+
+        private void InitializeRegistry()
+        {
+            RegistryKey key1 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
+            key1.SetValue("Auto Connect & Start Optimizing", false);
+            key1.Close();
+
+            RegistryKey key2 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
+            key2.SetValue("Optimize Charge Schedule", false);
+            key2.Close();
+
+            RegistryKey key3 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
+            key3.SetValue("Optimal Battery Range", new DateTime[2] { Battery_OptimizeChargeTime.Value, Battery_NormalChargeTime.Value }); 
+            key3.Close();
+
+            RegistryKey key4 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
+            key4.SetValue("Optimal Battery Range", new int[2] { 40, 60}); //min, max
+            key4.Close();
+
+
+        } //END InitializeRegistry
 
         private void Find_Coms()
         {
@@ -47,20 +86,21 @@ namespace BatteryPerserve
         private void Com_Con_Dis_Click(object sender, EventArgs e)
         {
             if (Com_Con_Dis.Text == "Connect")
-                OpenPort();
+                OpenPort(Com_Selection.SelectedItem.ToString());
             else //Disconnect
                 ClosePort();                
           
         } //END Com_Con_Dis
 
-        private void OpenPort()
+        private void OpenPort(string Com_Name)
         {
             try
             {
-                SP0.PortName = Com_Selection.SelectedItem.ToString(); //name
+                SP0.PortName = Com_Name; //name
                 SP0.BaudRate = 9600; //baudrate
                 SP0.Open(); //open serial port
                 //MessageBox.Show("Port Opened Successfully !");
+                LastConnectedCom = Com_Name;
                 Com_Con_Dis.Text = "Disconnect";
                 button_OptmizeBattery.Enabled = true;
             }
@@ -114,7 +154,7 @@ namespace BatteryPerserve
         private bool CheckOptimizationSchedule()
         {
             //Check if Optimize checkbox is checked and also if it is time to always stay charged
-            if (checkBox_OptimizeChargeTime.Checked == false || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay))
+            if (checkBox_OptimizeChargeTime.Checked == false || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay))
                 return true;
             else
                 return false;
@@ -142,7 +182,7 @@ namespace BatteryPerserve
 
                         if (SP0.IsOpen) //Check Port Open && not
                         {
-                            if (Pwr_Info.BatteryLifePercent >= 0.42)
+                            if (Pwr_Info.BatteryLifePercent >= (float)BatteryMax.Value / 100)
                             { //combine if stmt's
                                 if (Pwr_Info.PowerLineStatus.ToString() == "Online")
                                 {
@@ -153,7 +193,7 @@ namespace BatteryPerserve
                                 }
 
                             }
-                            else if (Pwr_Info.BatteryLifePercent <= 0.40)
+                            else if (Pwr_Info.BatteryLifePercent <= (float)BatteryMin.Value / 100)
                             {
                                 if (Pwr_Info.PowerLineStatus.ToString() == "Offline")
                                 {
@@ -212,6 +252,44 @@ namespace BatteryPerserve
             }               
         } //END Optimize Battery
 
+        private void AddToStartup() 
+        {
+            //Add
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+            key.SetValue("BatteryOptimizer", @"" + Directory.GetCurrentDirectory() + "\\BatteryPerserve.exe"); //get current folder
+        } //END AddToStartup
+
+        private void RemoveFromStartup()
+        {
+            //Remove
+            RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
+            key.DeleteValue("BatteryOptimizer", false);
+        } //END RemoveFromStartup
+
+        private void Program_Settings_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+
+            if (Program_Settings.SelectedIndex == 0) //Start program at boot
+            {
+                if (Program_Settings.CheckedIndices.Contains(0) == false) //Not checked, being checked
+                    AddToStartup();
+                else //Checked, being removed
+                    RemoveFromStartup();
+            }
+            else if (Program_Settings.SelectedIndex == 1) //Auto Connect & Start Optimizing
+            {
+                if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked
+                {
+                    
+                }
+                else //Checked, being removed
+                {
+
+                }
+
+            }
+
+        } //END Program_Settings_ItemCheck
 
 
     } //END Class

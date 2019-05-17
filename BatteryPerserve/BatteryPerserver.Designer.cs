@@ -1,6 +1,6 @@
 ﻿namespace BatteryPerserve
 {
-    partial class BatteryPerserver
+    partial class BatteryOptimizer
     {
         /// <summary>
         /// Required designer variable.
@@ -40,6 +40,8 @@
             this.Battery_Percentage = new System.Windows.Forms.TextBox();
             this.Battery_LineStatus = new System.Windows.Forms.TextBox();
             this.Panel_Battery_Info = new System.Windows.Forms.Panel();
+            this.label_EndCharge = new System.Windows.Forms.Label();
+            this.label_StartCharge = new System.Windows.Forms.Label();
             this.button_OptmizeBattery = new System.Windows.Forms.Button();
             this.button_DefaultBatteryRange = new System.Windows.Forms.Button();
             this.BatteryMax = new System.Windows.Forms.NumericUpDown();
@@ -51,9 +53,8 @@
             this.Battery_OptimizeChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Panel_Connection = new System.Windows.Forms.Panel();
+            this.Program_Settings = new System.Windows.Forms.CheckedListBox();
             this.label_ComSelection = new System.Windows.Forms.Label();
-            this.label_StartCharge = new System.Windows.Forms.Label();
-            this.label_EndCharge = new System.Windows.Forms.Label();
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
@@ -126,6 +127,24 @@
             this.Panel_Battery_Info.Name = "Panel_Battery_Info";
             this.Panel_Battery_Info.Size = new System.Drawing.Size(378, 208);
             this.Panel_Battery_Info.TabIndex = 7;
+            // 
+            // label_EndCharge
+            // 
+            this.label_EndCharge.AutoSize = true;
+            this.label_EndCharge.Location = new System.Drawing.Point(3, 135);
+            this.label_EndCharge.Name = "label_EndCharge";
+            this.label_EndCharge.Size = new System.Drawing.Size(58, 13);
+            this.label_EndCharge.TabIndex = 21;
+            this.label_EndCharge.Text = "Stop Time:";
+            // 
+            // label_StartCharge
+            // 
+            this.label_StartCharge.AutoSize = true;
+            this.label_StartCharge.Location = new System.Drawing.Point(3, 109);
+            this.label_StartCharge.Name = "label_StartCharge";
+            this.label_StartCharge.Size = new System.Drawing.Size(58, 13);
+            this.label_StartCharge.TabIndex = 20;
+            this.label_StartCharge.Text = "Start Time:";
             // 
             // button_OptmizeBattery
             // 
@@ -250,13 +269,27 @@
             // 
             // Panel_Connection
             // 
+            this.Panel_Connection.Controls.Add(this.Program_Settings);
             this.Panel_Connection.Controls.Add(this.label_ComSelection);
             this.Panel_Connection.Controls.Add(this.Com_Selection);
             this.Panel_Connection.Controls.Add(this.Com_Con_Dis);
             this.Panel_Connection.Location = new System.Drawing.Point(12, 12);
             this.Panel_Connection.Name = "Panel_Connection";
-            this.Panel_Connection.Size = new System.Drawing.Size(214, 180);
+            this.Panel_Connection.Size = new System.Drawing.Size(214, 269);
             this.Panel_Connection.TabIndex = 8;
+            // 
+            // Program_Settings
+            // 
+            this.Program_Settings.CheckOnClick = true;
+            this.Program_Settings.FormattingEnabled = true;
+            this.Program_Settings.Items.AddRange(new object[] {
+            "Start Program at Boot",
+            "Auto Connect & Start Optimizing"});
+            this.Program_Settings.Location = new System.Drawing.Point(6, 129);
+            this.Program_Settings.Name = "Program_Settings";
+            this.Program_Settings.Size = new System.Drawing.Size(177, 34);
+            this.Program_Settings.TabIndex = 4;
+            this.Program_Settings.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.Program_Settings_ItemCheck);
             // 
             // label_ComSelection
             // 
@@ -267,35 +300,17 @@
             this.label_ComSelection.TabIndex = 3;
             this.label_ComSelection.Text = "Select the corresponding com";
             // 
-            // label_StartCharge
-            // 
-            this.label_StartCharge.AutoSize = true;
-            this.label_StartCharge.Location = new System.Drawing.Point(3, 109);
-            this.label_StartCharge.Name = "label_StartCharge";
-            this.label_StartCharge.Size = new System.Drawing.Size(58, 13);
-            this.label_StartCharge.TabIndex = 20;
-            this.label_StartCharge.Text = "Start Time:";
-            // 
-            // label_EndCharge
-            // 
-            this.label_EndCharge.AutoSize = true;
-            this.label_EndCharge.Location = new System.Drawing.Point(3, 135);
-            this.label_EndCharge.Name = "label_EndCharge";
-            this.label_EndCharge.Size = new System.Drawing.Size(58, 13);
-            this.label_EndCharge.TabIndex = 21;
-            this.label_EndCharge.Text = "Stop Time:";
-            // 
-            // BatteryPerserver
+            // BatteryOptimizer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.ClientSize = new System.Drawing.Size(636, 237);
+            this.ClientSize = new System.Drawing.Size(636, 312);
             this.Controls.Add(this.Panel_Connection);
             this.Controls.Add(this.Panel_Battery_Info);
             this.ForeColor = System.Drawing.Color.White;
-            this.Name = "BatteryPerserver";
-            this.Text = "Battery Saver";
+            this.Name = "BatteryOptimizer";
+            this.Text = "Battery Optimizer";
             this.Panel_Battery_Info.ResumeLayout(false);
             this.Panel_Battery_Info.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).EndInit();
@@ -327,6 +342,7 @@
         private System.Windows.Forms.Button button_OptmizeBattery;
         private System.Windows.Forms.Label label_EndCharge;
         private System.Windows.Forms.Label label_StartCharge;
+        private System.Windows.Forms.CheckedListBox Program_Settings;
     }
 }
 

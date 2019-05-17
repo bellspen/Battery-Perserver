@@ -13,10 +13,20 @@ using Microsoft.Win32;
 using System.IO;
 
 namespace BatteryPerserve
-{
+{   
     public partial class BatteryOptimizer : Form
     {
-        //private Microsoft.Win32.RegistryKey key;
+        private struct Settings_BatteryOptimizer
+        {           
+            public bool AutoConnect;
+            public string LastCom;
+            public bool OptimizeSchedule;
+            public DateTime StartChargeTime;
+            public DateTime StopChargeTime;
+            public decimal BatteryRangeMin;
+            public decimal BatteryRangeMax;
+        }
+
         private delegate void SafeCallDelegate(string text, string text2);
         private SerialPort SP0;
         private string LastConnectedCom;
@@ -28,6 +38,14 @@ namespace BatteryPerserve
         public BatteryOptimizer()
         {
             InitializeComponent();
+            //Check if first time ever running program
+            RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
+            if (key1 == null /*|| key1.GetValue("FirstEverRun") == null*/) 
+                InitializeRegistry();
+            key1.Close();
+
+            InitialRegistryCheck(); //Check Settings in Registry
+
             Find_Coms();
             SP0 = new SerialPort();
             Pwr_Control = true;
@@ -38,44 +56,55 @@ namespace BatteryPerserve
 
         private void InitialRegistryCheck()
         {
+            //Start Program at Boot
             RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
             if (key1.GetValue("BatteryOptimizer") != null)
                 Program_Settings.SetItemChecked(0, true);
             key1.Close();
-
+            //Rest of Settings
             RegistryKey key2 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
-            if ((bool)key2.GetValue("Auto Connect & Start Optimizing") == true)
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key2.GetValue("Settings");
+            //Auto Connect & Start Optimizing
+            if (BatOpSettings.AutoConnect == true)
                 Program_Settings.SetItemChecked(1, true);
+            //Last Com connected to
+            LastConnectedCom = BatOpSettings.LastCom;
+            //Optimize Charge Schedule
+            if (BatOpSettings.OptimizeSchedule == true)
+                checkBox_OptimizeChargeTime.Checked = true;
+            //Charge Start Stop times
+            Battery_OptimizeChargeTime.Value = BatOpSettings.StartChargeTime;
+            Battery_NormalChargeTime.Value = BatOpSettings.StopChargeTime;
+            //Optimal Battery Range
+            BatteryMin.Value = BatOpSettings.BatteryRangeMin;
+            BatteryMax.Value = BatOpSettings.BatteryRangeMax;
 
-            //Check key2, key3, key4, in InitializeRegistry as well
+            key2.Close();
 
         } //END InitialRegistryCheck
 
         private void InitializeRegistry()
         {
+            Settings_BatteryOptimizer InitialSettings = new Settings_BatteryOptimizer
+            {
+                AutoConnect = false,
+                LastCom = "",
+                OptimizeSchedule = false,
+                StartChargeTime = Battery_OptimizeChargeTime.Value,
+                StopChargeTime = Battery_NormalChargeTime.Value,
+                BatteryRangeMin = BatteryMin.Value,
+                BatteryRangeMax = BatteryMax.Value
+            };
+
             RegistryKey key1 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
-            key1.SetValue("Auto Connect & Start Optimizing", false);
+            key1.SetValue("Settings", InitialSettings);
+            //key1.SetValue("FirstEverRun", true);
             key1.Close();
-
-            RegistryKey key2 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
-            key2.SetValue("Optimize Charge Schedule", false);
-            key2.Close();
-
-            RegistryKey key3 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
-            key3.SetValue("Optimal Battery Range", new DateTime[2] { Battery_OptimizeChargeTime.Value, Battery_NormalChargeTime.Value }); 
-            key3.Close();
-
-            RegistryKey key4 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
-            key4.SetValue("Optimal Battery Range", new int[2] { 40, 60}); //min, max
-            key4.Close();
-
 
         } //END InitializeRegistry
 
         private void Find_Coms()
-        {
-            
-            //string[] PortName = SerialPort.GetPortNames();
+        {           
             foreach(string i in SerialPort.GetPortNames())
             {
                 Com_Selection.Items.Add(i);
@@ -257,6 +286,7 @@ namespace BatteryPerserve
             //Add
             RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             key.SetValue("BatteryOptimizer", @"" + Directory.GetCurrentDirectory() + "\\BatteryPerserve.exe"); //get current folder
+            key.Close();
         } //END AddToStartup
 
         private void RemoveFromStartup()
@@ -264,6 +294,7 @@ namespace BatteryPerserve
             //Remove
             RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             key.DeleteValue("BatteryOptimizer", false);
+            key.Close();
         } //END RemoveFromStartup
 
         private void Program_Settings_ItemCheck(object sender, ItemCheckEventArgs e)

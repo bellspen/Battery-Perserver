@@ -165,11 +165,9 @@ namespace BatteryPerserve
                 //MessageBox.Show("Port Opened Successfully !");
 
                 LastConnectedCom = Com_Name;
-                RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-                Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+                Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
                 BatOpSettings.LastCom = Com_Name;
-                key.SetValue("Settings", BatOpSettings);
-                key.Close();
+                SaveSettings(BatOpSettings);
 
                 Com_Con_Dis.Text = "Disconnect";
                 button_OptmizeBattery.Enabled = true;
@@ -289,8 +287,7 @@ namespace BatteryPerserve
 
         private void checkBox_OptimizeChargeTime_CheckedChanged(object sender, EventArgs e)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
             if (Battery_OptimizeChargeTime.Enabled == false)
             {
@@ -305,20 +302,17 @@ namespace BatteryPerserve
                 BatOpSettings.OptimizeSchedule = false;
             }
 
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
         } //END CheckBox
 
         private void button_DefaultBatteryRange_Click(object sender, EventArgs e)
         {
             BatteryMin.Value = 40;
             BatteryMax.Value = 60;
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.BatteryRangeMin = BatteryMin.Value;
             BatOpSettings.BatteryRangeMax = BatteryMax.Value;
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
 
         } //END Defaults
 
@@ -380,16 +374,14 @@ namespace BatteryPerserve
             }
             else if (Program_Settings.SelectedIndex == 1) //Auto Connect & Start Optimizing
             {
-                RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-                Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+                Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
                 if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked               
                     BatOpSettings.AutoConnect = true;
                 else //Checked, being removed
                     BatOpSettings.AutoConnect = false;
 
-                key.SetValue("Settings", BatOpSettings);
-                key.Close();
+                SaveSettings(BatOpSettings);
 
             }
 
@@ -397,38 +389,30 @@ namespace BatteryPerserve
 
         private void Battery_OptimizeChargeTime_ValueChanged(object sender, EventArgs e)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.StartChargeTime = Battery_OptimizeChargeTime.Value;
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
         }
 
         private void Battery_NormalChargeTime_ValueChanged(object sender, EventArgs e)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.StopChargeTime = Battery_NormalChargeTime.Value;
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
         }
 
         private void BatteryMin_ValueChanged(object sender, EventArgs e)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.BatteryRangeMin = BatteryMin.Value;
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
         }
 
         private void BatteryMax_ValueChanged(object sender, EventArgs e)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.BatteryRangeMax = BatteryMax.Value;
-            key.SetValue("Settings", BatOpSettings);
-            key.Close();
+            SaveSettings(BatOpSettings);
         }
     } //END Class
 } //END Namespace

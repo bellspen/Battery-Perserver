@@ -11,12 +11,14 @@ using System.IO.Ports;
 using System.Threading;
 using Microsoft.Win32;
 using System.IO;
+using System.Xml.Serialization;
 
 namespace BatteryPerserve
 {   
     public partial class BatteryOptimizer : Form
     {
-        private struct Settings_BatteryOptimizer
+        [Serializable()]
+        public struct Settings_BatteryOptimizer
         {           
             public bool AutoConnect;
             public string LastCom;
@@ -42,12 +44,20 @@ namespace BatteryPerserve
             RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
             if (key1 == null /*|| key1.GetValue("FirstEverRun") == null*/) 
                 InitializeRegistry();
-            key1.Close();
+            else
+                key1.Close();
 
             InitialRegistryCheck(); //Check Settings in Registry
 
             Find_Coms();
             SP0 = new SerialPort();
+          
+            if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
+            {
+                button_OptmizeBattery_Click();
+                OpenPort(LastConnectedCom);
+            }
+            
             Pwr_Control = true;
             Watch_Pwr = true;
             Pwr_Watching = new Thread(PowerWatch);
@@ -62,8 +72,7 @@ namespace BatteryPerserve
                 Program_Settings.SetItemChecked(0, true);
             key1.Close();
             //Rest of Settings
-            RegistryKey key2 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
-            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key2.GetValue("Settings");
+            Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             //Auto Connect & Start Optimizing
             if (BatOpSettings.AutoConnect == true)
                 Program_Settings.SetItemChecked(1, true);
@@ -78,8 +87,6 @@ namespace BatteryPerserve
             //Optimal Battery Range
             BatteryMin.Value = BatOpSettings.BatteryRangeMin;
             BatteryMax.Value = BatOpSettings.BatteryRangeMax;
-
-            key2.Close();
 
         } //END InitialRegistryCheck
 
@@ -97,11 +104,38 @@ namespace BatteryPerserve
             };
 
             RegistryKey key1 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
-            key1.SetValue("Settings", InitialSettings);
-            //key1.SetValue("FirstEverRun", true);
             key1.Close();
+            SaveSettings(InitialSettings);
 
         } //END InitializeRegistry
+
+        private void SaveSettings(Settings_BatteryOptimizer BatOpSettings)
+        {
+            string s_InitialSettings;
+            using (var stringwriter = new System.IO.StringWriter())
+            {
+                var serializer = new XmlSerializer(BatOpSettings.GetType());
+                serializer.Serialize(stringwriter, BatOpSettings);
+                s_InitialSettings = stringwriter.ToString();
+            };
+
+            RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            key1.SetValue("Settings", s_InitialSettings, RegistryValueKind.String);
+            key1.Close();
+        } //END SaveSettings
+
+        private Settings_BatteryOptimizer RetrieveSettings()
+        {
+            RegistryKey key2 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
+            string s_BatOpSettings = (string)key2.GetValue("Settings");
+
+            using (var stringReader = new System.IO.StringReader(s_BatOpSettings))
+            {
+                var serializer = new XmlSerializer(typeof(Settings_BatteryOptimizer));
+                return (Settings_BatteryOptimizer)serializer.Deserialize(stringReader);
+            };
+
+        } //END RetrieveSettings
 
         private void Find_Coms()
         {           
@@ -129,13 +163,20 @@ namespace BatteryPerserve
                 SP0.BaudRate = 9600; //baudrate
                 SP0.Open(); //open serial port
                 //MessageBox.Show("Port Opened Successfully !");
+
                 LastConnectedCom = Com_Name;
+                RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+                Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+                BatOpSettings.LastCom = Com_Name;
+                key.SetValue("Settings", BatOpSettings);
+                key.Close();
+
                 Com_Con_Dis.Text = "Disconnect";
                 button_OptmizeBattery.Enabled = true;
             }
             catch
             {
-                MessageBox.Show("Could Not Open Specified Port !");
+                MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
             }
 
         } //END OpenPort
@@ -248,22 +289,37 @@ namespace BatteryPerserve
 
         private void checkBox_OptimizeChargeTime_CheckedChanged(object sender, EventArgs e)
         {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+
             if (Battery_OptimizeChargeTime.Enabled == false)
             {
                 Battery_OptimizeChargeTime.Enabled = true;
                 Battery_NormalChargeTime.Enabled = true;
+                BatOpSettings.OptimizeSchedule = true;
             }
             else //true
             {
                 Battery_OptimizeChargeTime.Enabled = false;
                 Battery_NormalChargeTime.Enabled = false;
+                BatOpSettings.OptimizeSchedule = false;
             }
+
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
         } //END CheckBox
 
         private void button_DefaultBatteryRange_Click(object sender, EventArgs e)
         {
             BatteryMin.Value = 40;
             BatteryMax.Value = 60;
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            BatOpSettings.BatteryRangeMin = BatteryMin.Value;
+            BatOpSettings.BatteryRangeMax = BatteryMax.Value;
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
+
         } //END Defaults
 
         private void button_OptmizeBattery_Click(object sender, EventArgs e)
@@ -279,6 +335,21 @@ namespace BatteryPerserve
                 button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
                 ClearAllGpio();
             }               
+        } //END Optimize Battery
+
+        private void button_OptmizeBattery_Click() //For Simulating click
+        {
+            if (button_OptmizeBattery.Text == "OFF")
+            {
+                button_OptmizeBattery.Text = "ON";
+                button_OptmizeBattery.BackColor = System.Drawing.Color.Lime;
+            }
+            else
+            {
+                button_OptmizeBattery.Text = "OFF";
+                button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
+                ClearAllGpio();
+            }
         } //END Optimize Battery
 
         private void AddToStartup() 
@@ -309,19 +380,55 @@ namespace BatteryPerserve
             }
             else if (Program_Settings.SelectedIndex == 1) //Auto Connect & Start Optimizing
             {
-                if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked
-                {
-                    
-                }
-                else //Checked, being removed
-                {
+                RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+                Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
 
-                }
+                if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked               
+                    BatOpSettings.AutoConnect = true;
+                else //Checked, being removed
+                    BatOpSettings.AutoConnect = false;
+
+                key.SetValue("Settings", BatOpSettings);
+                key.Close();
 
             }
 
         } //END Program_Settings_ItemCheck
 
+        private void Battery_OptimizeChargeTime_ValueChanged(object sender, EventArgs e)
+        {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            BatOpSettings.StartChargeTime = Battery_OptimizeChargeTime.Value;
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
+        }
 
+        private void Battery_NormalChargeTime_ValueChanged(object sender, EventArgs e)
+        {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            BatOpSettings.StopChargeTime = Battery_NormalChargeTime.Value;
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
+        }
+
+        private void BatteryMin_ValueChanged(object sender, EventArgs e)
+        {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            BatOpSettings.BatteryRangeMin = BatteryMin.Value;
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
+        }
+
+        private void BatteryMax_ValueChanged(object sender, EventArgs e)
+        {
+            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer", true);
+            Settings_BatteryOptimizer BatOpSettings = (Settings_BatteryOptimizer)key.GetValue("Settings");
+            BatOpSettings.BatteryRangeMax = BatteryMax.Value;
+            key.SetValue("Settings", BatOpSettings);
+            key.Close();
+        }
     } //END Class
 } //END Namespace

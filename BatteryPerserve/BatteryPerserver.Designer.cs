@@ -186,6 +186,7 @@
             0,
             0,
             0});
+            this.BatteryMax.ValueChanged += new System.EventHandler(this.BatteryMax_ValueChanged);
             // 
             // BatteryMin
             // 
@@ -203,6 +204,7 @@
             0,
             0,
             0});
+            this.BatteryMin.ValueChanged += new System.EventHandler(this.BatteryMin_ValueChanged);
             // 
             // label_BatteryMax
             // 
@@ -253,6 +255,7 @@
             this.Battery_OptimizeChargeTime.Size = new System.Drawing.Size(72, 20);
             this.Battery_OptimizeChargeTime.TabIndex = 9;
             this.Battery_OptimizeChargeTime.Value = new System.DateTime(2019, 5, 15, 9, 0, 0, 0);
+            this.Battery_OptimizeChargeTime.ValueChanged += new System.EventHandler(this.Battery_OptimizeChargeTime_ValueChanged);
             // 
             // Battery_NormalChargeTime
             // 
@@ -266,6 +269,7 @@
             this.Battery_NormalChargeTime.Size = new System.Drawing.Size(73, 20);
             this.Battery_NormalChargeTime.TabIndex = 7;
             this.Battery_NormalChargeTime.Value = new System.DateTime(2019, 5, 14, 22, 0, 0, 0);
+            this.Battery_NormalChargeTime.ValueChanged += new System.EventHandler(this.Battery_NormalChargeTime_ValueChanged);
             // 
             // Panel_Connection
             // 

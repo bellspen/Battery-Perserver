@@ -34,6 +34,8 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(BatteryOptimizer));
             this.Com_Selection = new System.Windows.Forms.ListBox();
             this.Com_Con_Dis = new System.Windows.Forms.Button();
             this.Battery_Info = new System.Windows.Forms.Label();
@@ -55,6 +57,7 @@
             this.Panel_Connection = new System.Windows.Forms.Panel();
             this.Program_Settings = new System.Windows.Forms.CheckedListBox();
             this.label_ComSelection = new System.Windows.Forms.Label();
+            this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
@@ -288,10 +291,11 @@
             this.Program_Settings.FormattingEnabled = true;
             this.Program_Settings.Items.AddRange(new object[] {
             "Start Program at Boot",
-            "Auto Connect & Start Optimizing"});
+            "Auto Connect & Start Optimizing",
+            "Start Minimized"});
             this.Program_Settings.Location = new System.Drawing.Point(6, 129);
             this.Program_Settings.Name = "Program_Settings";
-            this.Program_Settings.Size = new System.Drawing.Size(177, 34);
+            this.Program_Settings.Size = new System.Drawing.Size(177, 49);
             this.Program_Settings.TabIndex = 4;
             this.Program_Settings.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.Program_Settings_ItemCheck);
             // 
@@ -304,6 +308,12 @@
             this.label_ComSelection.TabIndex = 3;
             this.label_ComSelection.Text = "Select the corresponding com";
             // 
+            // notifyIcon1
+            // 
+            this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
+            this.notifyIcon1.Text = "notifyIcon1";
+            this.notifyIcon1.DoubleClick += new System.EventHandler(this.notifyIcon1_DoubleClick);
+            // 
             // BatteryOptimizer
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -313,8 +323,10 @@
             this.Controls.Add(this.Panel_Connection);
             this.Controls.Add(this.Panel_Battery_Info);
             this.ForeColor = System.Drawing.Color.White;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "BatteryOptimizer";
             this.Text = "Battery Optimizer";
+            this.Resize += new System.EventHandler(this.BatteryOptimizer_Resize);
             this.Panel_Battery_Info.ResumeLayout(false);
             this.Panel_Battery_Info.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).EndInit();
@@ -347,6 +359,7 @@
         private System.Windows.Forms.Label label_EndCharge;
         private System.Windows.Forms.Label label_StartCharge;
         private System.Windows.Forms.CheckedListBox Program_Settings;
+        private System.Windows.Forms.NotifyIcon notifyIcon1;
     }
 }
 

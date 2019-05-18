@@ -21,6 +21,7 @@ namespace BatteryPerserve
         public struct Settings_BatteryOptimizer
         {           
             public bool AutoConnect;
+            public bool StartMinimized;
             public string LastCom;
             public bool OptimizeSchedule;
             public DateTime StartChargeTime;
@@ -51,11 +52,16 @@ namespace BatteryPerserve
 
             Find_Coms();
             SP0 = new SerialPort();
-          
-            if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
+                      
+            if (Program_Settings.CheckedIndices.Contains(1) == true ) //Auto Connect
             {
-                button_OptmizeBattery_Click();
-                OpenPort(LastConnectedCom);
+                if (LastConnectedCom == "")
+                    MessageBox.Show("Auto Connect could not work because there is no previous connection.");
+                else
+                {
+                    button_OptmizeBattery_Click();
+                    OpenPort(LastConnectedCom);
+                }
             }
             
             Pwr_Control = true;
@@ -76,6 +82,12 @@ namespace BatteryPerserve
             //Auto Connect & Start Optimizing
             if (BatOpSettings.AutoConnect == true)
                 Program_Settings.SetItemChecked(1, true);
+            //Start Minimized
+            if (BatOpSettings.StartMinimized == true)
+            {
+                Program_Settings.SetItemChecked(2, true);
+                this.WindowState = FormWindowState.Minimized;
+            }
             //Last Com connected to
             LastConnectedCom = BatOpSettings.LastCom;
             //Optimize Charge Schedule
@@ -95,6 +107,7 @@ namespace BatteryPerserve
             Settings_BatteryOptimizer InitialSettings = new Settings_BatteryOptimizer
             {
                 AutoConnect = false,
+                StartMinimized = false,
                 LastCom = "",
                 OptimizeSchedule = false,
                 StartChargeTime = Battery_OptimizeChargeTime.Value,
@@ -185,7 +198,7 @@ namespace BatteryPerserve
             SP0.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
             System.Threading.Thread.Sleep(200); //system sleep
             SP0.DiscardOutBuffer(); //discard output buffer
-        }
+        } //END ClearAllGpio
 
         private void ClosePort()
         {
@@ -384,6 +397,17 @@ namespace BatteryPerserve
                 SaveSettings(BatOpSettings);
 
             }
+            else if (Program_Settings.SelectedIndex == 2)
+            {
+                Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+
+                if (Program_Settings.CheckedIndices.Contains(2) == false) //Not checked, being checked               
+                    BatOpSettings.StartMinimized = true;
+                else //Checked, being removed
+                    BatOpSettings.StartMinimized = false;
+
+                SaveSettings(BatOpSettings);
+            }
 
         } //END Program_Settings_ItemCheck
 
@@ -392,27 +416,43 @@ namespace BatteryPerserve
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.StartChargeTime = Battery_OptimizeChargeTime.Value;
             SaveSettings(BatOpSettings);
-        }
+        } //END Battery_OptimizeChargeTime_ValueChanged
 
         private void Battery_NormalChargeTime_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.StopChargeTime = Battery_NormalChargeTime.Value;
             SaveSettings(BatOpSettings);
-        }
+        } //END Battery_NormalChargeTime_ValueChanged
 
         private void BatteryMin_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.BatteryRangeMin = BatteryMin.Value;
             SaveSettings(BatOpSettings);
-        }
+        } //END BatteryMin_ValueChanged
 
         private void BatteryMax_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
             BatOpSettings.BatteryRangeMax = BatteryMax.Value;
             SaveSettings(BatOpSettings);
-        }
+        } //END BatteryMax_ValueChanged
+
+        private void BatteryOptimizer_Resize(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                Hide();
+                notifyIcon1.Visible = true;
+            }
+        } //END BatteryOptimizer_Resize
+
+        private void notifyIcon1_DoubleClick(object sender, EventArgs e)
+        {
+            Show();
+            this.WindowState = FormWindowState.Normal;
+            notifyIcon1.Visible = false;
+        } //END notifyIcon1_DoubleClick
     } //END Class
 } //END Namespace

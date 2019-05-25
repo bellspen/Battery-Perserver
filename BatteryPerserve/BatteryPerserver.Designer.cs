@@ -15,10 +15,12 @@
         {
             //Stop Power Watching
             Watch_Pwr = false;
-            Pwr_Watching.Abort();
+            Pwr_Watching.Abort(); //Stop monitoring battery
+            Watch_OpenCheck = true;
+            Com_OpenCheck.Abort(); //Stop Keeping Port Open
             if (SP0.IsOpen)
                 ClosePort();
-           
+         
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -58,6 +60,7 @@
             this.Program_Settings = new System.Windows.Forms.CheckedListBox();
             this.label_ComSelection = new System.Windows.Forms.Label();
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
+            this.serialPort1 = new System.IO.Ports.SerialPort(this.components);
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
@@ -360,6 +363,7 @@
         private System.Windows.Forms.Label label_StartCharge;
         private System.Windows.Forms.CheckedListBox Program_Settings;
         private System.Windows.Forms.NotifyIcon notifyIcon1;
+        private System.IO.Ports.SerialPort serialPort1;
     }
 }
 

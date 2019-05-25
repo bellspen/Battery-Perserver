@@ -30,12 +30,15 @@ namespace BatteryPerserve
             public decimal BatteryRangeMax;
         }
 
-        private delegate void SafeCallDelegate(string text, string text2);
+        private delegate void SafeCallDelegate(string text, string text2); //UpdatePowerInfo
+        private delegate void SafeCallDelegate2(string text); //OpenPort
         private SerialPort SP0;
         private string LastConnectedCom;
         private PowerStatus Pwr_Info;
         private Thread Pwr_Watching;
-        private bool Watch_Pwr;
+        private Thread Com_OpenCheck;
+        private bool Watch_Pwr; //Pwr_Watching Thread
+        private bool Watch_OpenCheck; //Com_OpenCheck
         private bool Pwr_Control;
 
         public BatteryOptimizer()
@@ -60,7 +63,10 @@ namespace BatteryPerserve
                 else
                 {
                     button_OptmizeBattery_Click();
-                    OpenPort(LastConnectedCom);
+                    Watch_OpenCheck = true;
+                    Com_OpenCheck = new Thread(KeepOpenPort);
+                    Com_OpenCheck.Start();
+                    //OpenPort(LastConnectedCom);
                 }
             }
             
@@ -168,28 +174,48 @@ namespace BatteryPerserve
           
         } //END Com_Con_Dis
 
-        private void OpenPort(string Com_Name)
+        private void KeepOpenPort()
         {
-            try
+            while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
             {
-                SP0.PortName = Com_Name; //name
-                SP0.BaudRate = 9600; //baudrate
-                SP0.Open(); //open serial port
-                //MessageBox.Show("Port Opened Successfully !");
-
-                LastConnectedCom = Com_Name;
-                Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-                BatOpSettings.LastCom = Com_Name;
-                SaveSettings(BatOpSettings);
-
-                Com_Con_Dis.Text = "Disconnect";
-                button_OptmizeBattery.Enabled = true;
+                if (SP0.IsOpen == false)
+                {
+                    OpenPort(LastConnectedCom);
+                }
             }
-            catch
+        } //END KeepOpenPort
+
+        private void OpenPort(string Com_Name) //Test later to see if needs a bool to see if in main thread or not
+        {
+            if (Com_Con_Dis.InvokeRequired)
             {
-                MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
+                var d = new SafeCallDelegate2(OpenPort);
+                Invoke(d, new object[] { Com_Name });
+            }
+            else
+            {
+                try
+                {
+                    SP0.PortName = Com_Name; //name
+                    SP0.BaudRate = 9600; //baudrate
+                    SP0.Open(); //open serial port
+                                //MessageBox.Show("Port Opened Successfully !");
+
+                    LastConnectedCom = Com_Name;
+                    Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+                    BatOpSettings.LastCom = Com_Name;
+                    SaveSettings(BatOpSettings);
+
+                    Com_Con_Dis.Text = "Disconnect";
+                    button_OptmizeBattery.Enabled = true;
+                }
+                catch
+                {
+                    MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
+                }
             }
 
+            
         } //END OpenPort
 
         private void ClearAllGpio()
@@ -235,7 +261,7 @@ namespace BatteryPerserve
         private bool CheckOptimizationSchedule()
         {
             //Check if Optimize checkbox is checked and also if it is time to always stay charged
-            if (checkBox_OptimizeChargeTime.Checked == false || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay))
+            if (checkBox_OptimizeChargeTime.Checked == false || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay && Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay) || (Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay && Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay))
                 return true;
             else
                 return false;
@@ -389,10 +415,19 @@ namespace BatteryPerserve
             {
                 Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
-                if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked               
+                if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked
+                {
                     BatOpSettings.AutoConnect = true;
+                    Watch_OpenCheck = true;
+                    Com_OpenCheck = new Thread(KeepOpenPort);
+                    Com_OpenCheck.Start();
+                }
                 else //Checked, being removed
+                {
                     BatOpSettings.AutoConnect = false;
+                    Watch_OpenCheck = false;
+                    Com_OpenCheck.Abort();
+                }
 
                 SaveSettings(BatOpSettings);
 

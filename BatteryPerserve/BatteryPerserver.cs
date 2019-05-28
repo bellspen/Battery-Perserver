@@ -31,8 +31,8 @@ namespace BatteryPerserve
         }
 
         private delegate void SafeCallDelegate(string text, string text2); //UpdatePowerInfo
-        private delegate void SafeCallDelegate2(string text); //OpenPort
-        private SerialPort SP0;
+        private delegate void SafeCallDelegate2(string text, bool warning); //OpenPort
+        //private SerialPort SP0;
         private string LastConnectedCom;
         private PowerStatus Pwr_Info;
         private Thread Pwr_Watching;
@@ -40,6 +40,7 @@ namespace BatteryPerserve
         private bool Watch_Pwr; //Pwr_Watching Thread
         private bool Watch_OpenCheck; //Com_OpenCheck
         private bool Pwr_Control;
+        
 
         public BatteryOptimizer()
         {
@@ -54,19 +55,24 @@ namespace BatteryPerserve
             InitialRegistryCheck(); //Check Settings in Registry
 
             Find_Coms();
-            SP0 = new SerialPort();
-                      
-            if (Program_Settings.CheckedIndices.Contains(1) == true ) //Auto Connect
-            {
-                if (LastConnectedCom == "")
-                    MessageBox.Show("Auto Connect could not work because there is no previous connection.");
-                else
+            SP1 = new SerialPort();
+
+            if (Com_Selection.Items.Count == 0)
+                MessageBox.Show("Please turn on Bluetooth.");
+            else
+            {              
+                if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
                 {
-                    button_OptmizeBattery_Click();
-                    Watch_OpenCheck = true;
-                    Com_OpenCheck = new Thread(KeepOpenPort);
-                    Com_OpenCheck.Start();
-                    //OpenPort(LastConnectedCom);
+                    if (LastConnectedCom == "")
+                        MessageBox.Show("Auto Connect could not work because there is no previous connection.");
+                    else
+                    {
+                        button_OptmizeBattery_Click();
+                        Watch_OpenCheck = true;
+                        Com_OpenCheck = new Thread(KeepOpenPort);
+                        Com_OpenCheck.Start();
+                        //OpenPort(LastConnectedCom);
+                    }
                 }
             }
             
@@ -168,7 +174,7 @@ namespace BatteryPerserve
         private void Com_Con_Dis_Click(object sender, EventArgs e)
         {
             if (Com_Con_Dis.Text == "Connect")
-                OpenPort(Com_Selection.SelectedItem.ToString());
+                OpenPort(Com_Selection.SelectedItem.ToString(), true);
             else //Disconnect
                 ClosePort();                
           
@@ -178,27 +184,29 @@ namespace BatteryPerserve
         {
             while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
             {
-                if (SP0.IsOpen == false)
+                
+                if (SP1.IsOpen == false)
                 {
-                    OpenPort(LastConnectedCom);
+                    OpenPort(LastConnectedCom, false);                   
                 }
+                Thread.Sleep(1000);
             }
         } //END KeepOpenPort
 
-        private void OpenPort(string Com_Name) //Test later to see if needs a bool to see if in main thread or not
+        private void OpenPort(string Com_Name, bool warning) //Test later to see if needs a bool to see if in main thread or not
         {
             if (Com_Con_Dis.InvokeRequired)
             {
                 var d = new SafeCallDelegate2(OpenPort);
-                Invoke(d, new object[] { Com_Name });
+                Invoke(d, new object[] { Com_Name, warning });
             }
             else
             {
                 try
                 {
-                    SP0.PortName = Com_Name; //name
-                    SP0.BaudRate = 9600; //baudrate
-                    SP0.Open(); //open serial port
+                    SP1.PortName = Com_Name; //name
+                    SP1.BaudRate = 9600; //baudrate
+                    SP1.Open(); //open serial port
                                 //MessageBox.Show("Port Opened Successfully !");
 
                     LastConnectedCom = Com_Name;
@@ -211,7 +219,8 @@ namespace BatteryPerserve
                 }
                 catch
                 {
-                    MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
+                    if (warning)
+                        MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
                 }
             }
 
@@ -220,10 +229,10 @@ namespace BatteryPerserve
 
         private void ClearAllGpio()
         {
-            SP0.DiscardInBuffer(); //discard input buffer
-            SP0.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
+            SP1.DiscardInBuffer(); //discard input buffer
+            SP1.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
             System.Threading.Thread.Sleep(200); //system sleep
-            SP0.DiscardOutBuffer(); //discard output buffer
+            SP1.DiscardOutBuffer(); //discard output buffer
         } //END ClearAllGpio
 
         private void ClosePort()
@@ -231,7 +240,7 @@ namespace BatteryPerserve
             try
             {
                 ClearAllGpio();
-                SP0.Close(); //close serial port
+                SP1.Close(); //close serial port
                 //MessageBox.Show("Port Closed Successfully !");
                 Com_Con_Dis.Text = "Connect";
                 button_OptmizeBattery.Enabled = false;
@@ -287,16 +296,16 @@ namespace BatteryPerserve
                     if (CheckOptimizationSchedule()) 
                     {
 
-                        if (SP0.IsOpen) //Check Port Open && not
+                        if (SP1.IsOpen) //Check Port Open && not
                         {
                             if (Pwr_Info.BatteryLifePercent >= (float)BatteryMax.Value / 100)
                             { //combine if stmt's
                                 if (Pwr_Info.PowerLineStatus.ToString() == "Online")
                                 {
-                                    SP0.DiscardInBuffer(); //discard input buffer
-                                    SP0.Write("gpio set " + "0" + "\r"); //writing "gpio set X" command to serial port
+                                    SP1.DiscardInBuffer(); //discard input buffer
+                                    SP1.Write("gpio set " + "0" + "\r"); //writing "gpio set X" command to serial port
                                     System.Threading.Thread.Sleep(200); //system sleep
-                                    SP0.DiscardOutBuffer(); //discard output buffer
+                                    SP1.DiscardOutBuffer(); //discard output buffer
                                 }
 
                             }
@@ -304,10 +313,10 @@ namespace BatteryPerserve
                             {
                                 if (Pwr_Info.PowerLineStatus.ToString() == "Offline")
                                 {
-                                    SP0.DiscardInBuffer(); //discard input buffer
-                                    SP0.Write("gpio clear " + "0" + "\r"); //writing "gpio clear X" command to serial port
+                                    SP1.DiscardInBuffer(); //discard input buffer
+                                    SP1.Write("gpio clear " + "0" + "\r"); //writing "gpio clear X" command to serial port
                                     System.Threading.Thread.Sleep(200); //system sleep
-                                    SP0.DiscardOutBuffer(); //discard output buffer
+                                    SP1.DiscardOutBuffer(); //discard output buffer
                                 }
 
                             }
@@ -318,7 +327,7 @@ namespace BatteryPerserve
                         ClearAllGpio();
 
                 } //END Checking Optimizaion active
-
+                Thread.Sleep(1000);
             }//END Loop
 
 
@@ -426,7 +435,8 @@ namespace BatteryPerserve
                 {
                     BatOpSettings.AutoConnect = false;
                     Watch_OpenCheck = false;
-                    Com_OpenCheck.Abort();
+                    if (Com_OpenCheck != null && Com_OpenCheck.IsAlive)
+                        Com_OpenCheck.Abort();
                 }
 
                 SaveSettings(BatOpSettings);
@@ -489,5 +499,10 @@ namespace BatteryPerserve
             this.WindowState = FormWindowState.Normal;
             notifyIcon1.Visible = false;
         } //END notifyIcon1_DoubleClick
+
+        private void SP1_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            MessageBox.Show("Error from port");
+        }
     } //END Class
 } //END Namespace

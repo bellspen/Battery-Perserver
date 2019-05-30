@@ -37,14 +37,15 @@ namespace BatteryPerserve
         private PowerStatus Pwr_Info;
         private Thread Pwr_Watching;
         private Thread Com_OpenCheck;
+        private Thread Port_Opening;
         private bool Watch_Pwr; //Pwr_Watching Thread
         private bool Watch_OpenCheck; //Com_OpenCheck
         private bool Pwr_Control;
-        
-
+            
         public BatteryOptimizer()
         {
             InitializeComponent();
+            SystemEvents.PowerModeChanged += OnPowerChange;
             //Check if first time ever running program
             RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
             if (key1 == null /*|| key1.GetValue("FirstEverRun") == null*/) 
@@ -174,21 +175,46 @@ namespace BatteryPerserve
         private void Com_Con_Dis_Click(object sender, EventArgs e)
         {
             if (Com_Con_Dis.Text == "Connect")
+            {
                 OpenPort(Com_Selection.SelectedItem.ToString(), true);
+                if (Program_Settings.CheckedIndices.Contains(1) == true) //Check Auto connect
+                {
+                    Watch_OpenCheck = true;
+                    Com_OpenCheck = new Thread(KeepOpenPort);
+                    Com_OpenCheck.Start();
+                }
+            }
             else //Disconnect
-                ClosePort();                
-          
+            {
+                if (Program_Settings.CheckedIndices.Contains(1) == true) //Check Auto connect
+                {
+                    Watch_OpenCheck = false;
+                    if (Com_OpenCheck != null && Com_OpenCheck.IsAlive)
+                        Com_OpenCheck.Abort();
+                }
+                ClosePort();
+            }
         } //END Com_Con_Dis
+
+        private void OnPowerChange(object s, PowerModeChangedEventArgs e)
+        {
+            switch (e.Mode)
+            {
+                case PowerModes.Resume:
+                    SP1.Close(); //Closes the port upon laptop waking up, so that the port can be reopened           
+                    break;
+                case PowerModes.Suspend:
+                    break;
+            }
+        } //END OnPowerChange
 
         private void KeepOpenPort()
         {
             while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
-            {
-                
+            {               
                 if (SP1.IsOpen == false)
-                {
                     OpenPort(LastConnectedCom, false);                   
-                }
+
                 Thread.Sleep(1000);
             }
         } //END KeepOpenPort
@@ -206,7 +232,10 @@ namespace BatteryPerserve
                 {
                     SP1.PortName = Com_Name; //name
                     SP1.BaudRate = 9600; //baudrate
-                    SP1.Open(); //open serial port
+                    Port_Opening = new Thread(SP1.Open); //Put on thread, so program does not freeze up
+                    Port_Opening.Start();
+                    //Port_Opening.Join();
+                    //SP1.Open(); //open serial port
                                 //MessageBox.Show("Port Opened Successfully !");
 
                     LastConnectedCom = Com_Name;

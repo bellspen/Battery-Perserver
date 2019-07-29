@@ -15,9 +15,11 @@
         {
             //Stop Power Watching
             Watch_Pwr = false;
-            Pwr_Watching.Abort(); //Stop monitoring battery
+            if (Pwr_Watching != null && Pwr_Watching.IsAlive == true)
+                Pwr_Watching.Abort(); //Stop monitoring battery
             Watch_OpenCheck = true;
-            Com_OpenCheck.Abort(); //Stop Keeping Port Open
+            if (Com_OpenCheck != null && Com_OpenCheck.IsAlive == true)
+                Com_OpenCheck.Abort(); //Stop Keeping Port Open
             if (SP1.IsOpen)
                 ClosePort();
          

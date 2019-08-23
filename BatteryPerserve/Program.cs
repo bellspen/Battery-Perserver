@@ -14,6 +14,9 @@ namespace BatteryPerserve
 		//this is a test comment
 		//this is a test comment
 		//this is a test comment
+		//this is a test comment//this is a test comment
+		//this is a test comment
+		//this is a test comment
 		//this is a test comment
         [STAThread]
         static void Main()

@@ -12,6 +12,9 @@ namespace BatteryPerserve
         /// The main entry point for the application.
         /// </summary>
 		//this is a test comment
+		//this is a test comment
+		//this is a test comment
+		//this is a test comment
         [STAThread]
         static void Main()
         {

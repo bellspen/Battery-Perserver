@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO.Ports;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 using Microsoft.Win32;
 using System.IO;
@@ -17,12 +19,13 @@ namespace BatteryPerserve
 {   
     public partial class BatteryOptimizer : Form
     {
+        //Class Helper Classes -----------------------------------------------------------
         [Serializable()]
         public struct Settings_BatteryOptimizer
         {           
             public bool AutoConnect;
             public bool StartMinimized;
-            public string LastCom;
+            //public string LastCom;
             public bool OptimizeSchedule;
             public DateTime StartChargeTime;
             public DateTime StopChargeTime;
@@ -30,18 +33,28 @@ namespace BatteryPerserve
             public decimal BatteryRangeMax;
         }
 
+        //Class Data ---------------------------------------------------------------------
         private delegate void SafeCallDelegate(string text, string text2); //UpdatePowerInfo
         private delegate void SafeCallDelegate2(string text, bool warning); //OpenPort
         //private SerialPort SP0;
         private string LastConnectedCom;
         private PowerStatus Pwr_Info;
+
+        private UdpClient BP_UDP_Server;
+        private IPEndPoint BP_EndPoint;
+        private TcpListener BP_TCP_Server;
+        private const int BP_ListenPort = 8000;
+        private bool BP_Search_Device;
+
         private Thread Pwr_Watching;
-        private Thread Com_OpenCheck;
+        private Thread BP_Find_Device;
         private Thread Port_Opening;
+
         private bool Watch_Pwr; //Pwr_Watching Thread
-        private bool Watch_OpenCheck; //Com_OpenCheck
+        //private bool Watch_OpenCheck; //Com_OpenCheck
         private bool Pwr_Control;
-            
+
+        //Class Functions ----------------------------------------------------------------
         public BatteryOptimizer()
         {
             InitializeComponent();
@@ -55,28 +68,33 @@ namespace BatteryPerserve
 
             InitialRegistryCheck(); //Check Settings in Registry
 
-            Find_Coms();
-            SP1 = new SerialPort();
+            //Start UDP server to listen in for the Battery Opetimizer device:     
+            BP_UDP_Server = new UdpClient(BP_ListenPort);
+            BP_EndPoint = new IPEndPoint(IPAddress.Any, BP_ListenPort);
+            BP_Search_Device = true;
 
-            if (Com_Selection.Items.Count == 0)
-                MessageBox.Show("Please turn on Bluetooth.");
-            else
-            {              
-                if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
-                {
-                    if (LastConnectedCom == "")
-                        MessageBox.Show("Auto Connect could not work because there is no previous connection.");
-                    else
-                    {
-                        button_OptmizeBattery_Click();
-                        Watch_OpenCheck = true;
-                        Com_OpenCheck = new Thread(KeepOpenPort);
-                        Com_OpenCheck.Start();
-                        //OpenPort(LastConnectedCom);
-                    }
-                }
-            }
-            
+            ///Find_Coms();
+            //SP1 = new SerialPort();
+
+            //if (Com_Selection.Items.Count == 0)
+            //MessageBox.Show("Please turn on Bluetooth.");
+            //else
+            //{              
+            //    if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
+            //    {
+            //        if (LastConnectedCom == "")
+            //            MessageBox.Show("Auto Connect could not work because there is no previous connection.");
+            //        else
+            //        {
+            //            button_OptmizeBattery_Click();
+            //            //Watch_OpenCheck = true;
+            //            //Com_OpenCheck = new Thread(KeepOpenPort);
+            //            //Com_OpenCheck.Start();
+            //            //OpenPort(LastConnectedCom);
+            //        }
+            //    }
+            //}
+
             Pwr_Control = true;
             Watch_Pwr = true;
             Pwr_Watching = new Thread(PowerWatch);
@@ -90,11 +108,14 @@ namespace BatteryPerserve
             if (key1.GetValue("BatteryOptimizer") != null)
                 Program_Settings.SetItemChecked(0, true);
             key1.Close();
+
             //Rest of Settings
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+
             //Auto Connect & Start Optimizing
             if (BatOpSettings.AutoConnect == true)
                 Program_Settings.SetItemChecked(1, true);
+
             //Start Minimized
             if (BatOpSettings.StartMinimized == true)
             {
@@ -102,13 +123,18 @@ namespace BatteryPerserve
                 this.WindowState = FormWindowState.Minimized;
             }
             //Last Com connected to
-            LastConnectedCom = BatOpSettings.LastCom;
+            //LastConnectedCom = BatOpSettings.LastCom;
+
+
+
             //Optimize Charge Schedule
             if (BatOpSettings.OptimizeSchedule == true)
                 checkBox_OptimizeChargeTime.Checked = true;
+
             //Charge Start Stop times
             Battery_OptimizeChargeTime.Value = BatOpSettings.StartChargeTime;
             Battery_NormalChargeTime.Value = BatOpSettings.StopChargeTime;
+
             //Optimal Battery Range
             BatteryMin.Value = BatOpSettings.BatteryRangeMin;
             BatteryMax.Value = BatOpSettings.BatteryRangeMax;
@@ -163,12 +189,32 @@ namespace BatteryPerserve
 
         } //END RetrieveSettings
 
-        private void Find_Coms()
-        {           
-            foreach(string i in SerialPort.GetPortNames())
+        private void Find_Device()
+        {
+            Find_Device_Status.Text = "Searching for a Battery Optimizer Device";
+
+            while (BP_Search_Device == true)
             {
-                Com_Selection.Items.Add(i);
-            }           
+                byte[] received = BP_UDP_Server.Receive(ref BP_EndPoint);
+
+
+
+
+
+
+
+            }
+            
+            
+            
+            
+            
+            
+            
+            //foreach(string i in SerialPort.GetPortNames())
+            //{
+            //    Com_Selection.Items.Add(i);
+            //}           
 
         } //END Find_Coms
 
@@ -201,7 +247,7 @@ namespace BatteryPerserve
             switch (e.Mode)
             {
                 case PowerModes.Resume:
-                    SP1.Close(); //Closes the port upon laptop waking up, so that the port can be reopened           
+                    //SP1.Close(); //Closes the port upon laptop waking up, so that the port can be reopened           
                     break;
                 case PowerModes.Suspend:
                     break;
@@ -212,8 +258,8 @@ namespace BatteryPerserve
         {
             while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
             {               
-                if (SP1.IsOpen == false)
-                    OpenPort(LastConnectedCom, false);                   
+                //if (SP1.IsOpen == false)
+                //    OpenPort(LastConnectedCom, false);                   
 
                 Thread.Sleep(1000);
             }
@@ -230,17 +276,21 @@ namespace BatteryPerserve
             {
                 try
                 {
-                    SP1.PortName = Com_Name; //name
-                    SP1.BaudRate = 9600; //baudrate
-                    Port_Opening = new Thread(SP1.Open); //Put on thread, so program does not freeze up
-                    Port_Opening.Start();
+                    //SP1.PortName = Com_Name; //name
+                    //SP1.BaudRate = 9600; //baudrate
+                    //Port_Opening = new Thread(SP1.Open); //Put on thread, so program does not freeze up
+                    //Port_Opening.Start();
                     //Port_Opening.Join();
                     //SP1.Open(); //open serial port
                                 //MessageBox.Show("Port Opened Successfully !");
 
-                    LastConnectedCom = Com_Name;
+                    //LastConnectedCom = Com_Name;
+
+
+
+
                     Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-                    BatOpSettings.LastCom = Com_Name;
+                    //BatOpSettings.LastCom = Com_Name;
                     SaveSettings(BatOpSettings);
 
                     Com_Con_Dis.Text = "Disconnect";
@@ -249,7 +299,7 @@ namespace BatteryPerserve
                 catch
                 {
                     if (warning)
-                        MessageBox.Show("Could Not Open Specified Port! Make sure device is on.");
+                        MessageBox.Show("Could Not Open Specified Port! Make sure device is on."); //Change
                 }
             }
 

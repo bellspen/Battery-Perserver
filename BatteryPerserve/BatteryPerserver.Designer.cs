@@ -15,14 +15,18 @@
         {
             //Stop Power Watching
             Watch_Pwr = false;
+
             if (Pwr_Watching != null && Pwr_Watching.IsAlive == true)
                 Pwr_Watching.Abort(); //Stop monitoring battery
-            Watch_OpenCheck = true;
-            if (Com_OpenCheck != null && Com_OpenCheck.IsAlive == true)
-                Com_OpenCheck.Abort(); //Stop Keeping Port Open
-            if (SP1.IsOpen)
-                ClosePort();
+
+    
+            //Watch_OpenCheck = true;
+
+            //if (Com_OpenCheck != null && Com_OpenCheck.IsAlive == true)
+                //Com_OpenCheck.Abort(); //Stop Keeping Port Open
          
+
+
             if (disposing && (components != null))
             {
                 components.Dispose();
@@ -40,7 +44,6 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(BatteryOptimizer));
-            this.Com_Selection = new System.Windows.Forms.ListBox();
             this.Com_Con_Dis = new System.Windows.Forms.Button();
             this.Battery_Info = new System.Windows.Forms.Label();
             this.Battery_Percentage = new System.Windows.Forms.TextBox();
@@ -60,27 +63,21 @@
             this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Panel_Connection = new System.Windows.Forms.Panel();
             this.Program_Settings = new System.Windows.Forms.CheckedListBox();
-            this.label_ComSelection = new System.Windows.Forms.Label();
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
-            this.SP1 = new System.IO.Ports.SerialPort(this.components);
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.Find_Device_Status = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
             this.Panel_Connection.SuspendLayout();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // Com_Selection
-            // 
-            this.Com_Selection.FormattingEnabled = true;
-            this.Com_Selection.Location = new System.Drawing.Point(3, 28);
-            this.Com_Selection.Name = "Com_Selection";
-            this.Com_Selection.Size = new System.Drawing.Size(120, 95);
-            this.Com_Selection.TabIndex = 1;
             // 
             // Com_Con_Dis
             // 
             this.Com_Con_Dis.ForeColor = System.Drawing.Color.Black;
-            this.Com_Con_Dis.Location = new System.Drawing.Point(129, 30);
+            this.Com_Con_Dis.Location = new System.Drawing.Point(136, 77);
             this.Com_Con_Dis.Name = "Com_Con_Dis";
             this.Com_Con_Dis.Size = new System.Drawing.Size(75, 23);
             this.Com_Con_Dis.TabIndex = 2;
@@ -281,9 +278,8 @@
             // 
             // Panel_Connection
             // 
+            this.Panel_Connection.Controls.Add(this.statusStrip1);
             this.Panel_Connection.Controls.Add(this.Program_Settings);
-            this.Panel_Connection.Controls.Add(this.label_ComSelection);
-            this.Panel_Connection.Controls.Add(this.Com_Selection);
             this.Panel_Connection.Controls.Add(this.Com_Con_Dis);
             this.Panel_Connection.Location = new System.Drawing.Point(12, 12);
             this.Panel_Connection.Name = "Panel_Connection";
@@ -304,24 +300,33 @@
             this.Program_Settings.TabIndex = 4;
             this.Program_Settings.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.Program_Settings_ItemCheck);
             // 
-            // label_ComSelection
-            // 
-            this.label_ComSelection.AutoSize = true;
-            this.label_ComSelection.Location = new System.Drawing.Point(3, 10);
-            this.label_ComSelection.Name = "label_ComSelection";
-            this.label_ComSelection.Size = new System.Drawing.Size(148, 13);
-            this.label_ComSelection.TabIndex = 3;
-            this.label_ComSelection.Text = "Select the corresponding com";
-            // 
             // notifyIcon1
             // 
             this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
             this.notifyIcon1.Text = "notifyIcon1";
             this.notifyIcon1.DoubleClick += new System.EventHandler(this.notifyIcon1_DoubleClick);
             // 
-            // SP1
+            // statusStrip1
             // 
-            this.SP1.ErrorReceived += new System.IO.Ports.SerialErrorReceivedEventHandler(this.SP1_ErrorReceived);
+            this.statusStrip1.Dock = System.Windows.Forms.DockStyle.Top;
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.Find_Device_Status,
+            this.toolStripStatusLabel1});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 0);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(214, 22);
+            this.statusStrip1.TabIndex = 5;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // Find_Device_Status
+            // 
+            this.Find_Device_Status.Name = "Find_Device_Status";
+            this.Find_Device_Status.Size = new System.Drawing.Size(0, 17);
+            // 
+            // toolStripStatusLabel1
+            // 
+            this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
+            this.toolStripStatusLabel1.Size = new System.Drawing.Size(0, 17);
             // 
             // BatteryOptimizer
             // 
@@ -342,12 +347,13 @@
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).EndInit();
             this.Panel_Connection.ResumeLayout(false);
             this.Panel_Connection.PerformLayout();
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
-        private System.Windows.Forms.ListBox Com_Selection;
         private System.Windows.Forms.Button Com_Con_Dis;
         private System.Windows.Forms.Label Battery_Info;
         private System.Windows.Forms.TextBox Battery_Percentage;
@@ -363,13 +369,14 @@
         private System.Windows.Forms.Label label_BatteryMin;
         private System.Windows.Forms.Label label_BatteryRange;
         private System.Windows.Forms.Panel Panel_Connection;
-        private System.Windows.Forms.Label label_ComSelection;
         private System.Windows.Forms.Button button_OptmizeBattery;
         private System.Windows.Forms.Label label_EndCharge;
         private System.Windows.Forms.Label label_StartCharge;
         private System.Windows.Forms.CheckedListBox Program_Settings;
         private System.Windows.Forms.NotifyIcon notifyIcon1;
-        private System.IO.Ports.SerialPort SP1;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel Find_Device_Status;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
     }
 }
 

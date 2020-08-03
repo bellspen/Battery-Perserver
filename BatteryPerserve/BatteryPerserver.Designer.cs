@@ -14,10 +14,10 @@
         protected override void Dispose(bool disposing)
         {
             //Stop Power Watching
-            Watch_Pwr = false;
+            bp_watch_power = false;
 
-            if (Pwr_Watching != null && Pwr_Watching.IsAlive == true)
-                Pwr_Watching.Abort(); //Stop monitoring battery
+            if (bp_watch_power_thread != null && bp_watch_power_thread.IsAlive == true)
+                bp_watch_power_thread.Abort(); //Stop monitoring battery
 
     
             //Watch_OpenCheck = true;
@@ -44,7 +44,6 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(BatteryOptimizer));
-            this.Com_Con_Dis = new System.Windows.Forms.Button();
             this.Battery_Info = new System.Windows.Forms.Label();
             this.Battery_Percentage = new System.Windows.Forms.TextBox();
             this.Battery_LineStatus = new System.Windows.Forms.TextBox();
@@ -62,28 +61,17 @@
             this.Battery_OptimizeChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
             this.Panel_Connection = new System.Windows.Forms.Panel();
-            this.Program_Settings = new System.Windows.Forms.CheckedListBox();
-            this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.Find_Device_Status = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.Program_Settings = new System.Windows.Forms.CheckedListBox();
+            this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.Panel_Battery_Info.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
             this.Panel_Connection.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // Com_Con_Dis
-            // 
-            this.Com_Con_Dis.ForeColor = System.Drawing.Color.Black;
-            this.Com_Con_Dis.Location = new System.Drawing.Point(136, 77);
-            this.Com_Con_Dis.Name = "Com_Con_Dis";
-            this.Com_Con_Dis.Size = new System.Drawing.Size(75, 23);
-            this.Com_Con_Dis.TabIndex = 2;
-            this.Com_Con_Dis.Text = "Connect";
-            this.Com_Con_Dis.UseVisualStyleBackColor = true;
-            this.Com_Con_Dis.Click += new System.EventHandler(this.Com_Con_Dis_Click);
             // 
             // Battery_Info
             // 
@@ -280,31 +268,10 @@
             // 
             this.Panel_Connection.Controls.Add(this.statusStrip1);
             this.Panel_Connection.Controls.Add(this.Program_Settings);
-            this.Panel_Connection.Controls.Add(this.Com_Con_Dis);
             this.Panel_Connection.Location = new System.Drawing.Point(12, 12);
             this.Panel_Connection.Name = "Panel_Connection";
             this.Panel_Connection.Size = new System.Drawing.Size(214, 269);
             this.Panel_Connection.TabIndex = 8;
-            // 
-            // Program_Settings
-            // 
-            this.Program_Settings.CheckOnClick = true;
-            this.Program_Settings.FormattingEnabled = true;
-            this.Program_Settings.Items.AddRange(new object[] {
-            "Start Program at Boot",
-            "Auto Connect & Start Optimizing",
-            "Start Minimized"});
-            this.Program_Settings.Location = new System.Drawing.Point(6, 129);
-            this.Program_Settings.Name = "Program_Settings";
-            this.Program_Settings.Size = new System.Drawing.Size(177, 49);
-            this.Program_Settings.TabIndex = 4;
-            this.Program_Settings.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.Program_Settings_ItemCheck);
-            // 
-            // notifyIcon1
-            // 
-            this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
-            this.notifyIcon1.Text = "notifyIcon1";
-            this.notifyIcon1.DoubleClick += new System.EventHandler(this.notifyIcon1_DoubleClick);
             // 
             // statusStrip1
             // 
@@ -327,6 +294,26 @@
             // 
             this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             this.toolStripStatusLabel1.Size = new System.Drawing.Size(0, 17);
+            // 
+            // Program_Settings
+            // 
+            this.Program_Settings.CheckOnClick = true;
+            this.Program_Settings.FormattingEnabled = true;
+            this.Program_Settings.Items.AddRange(new object[] {
+            "Start Program at Boot",
+            "Auto Connect & Start Optimizing",
+            "Start Minimized"});
+            this.Program_Settings.Location = new System.Drawing.Point(6, 129);
+            this.Program_Settings.Name = "Program_Settings";
+            this.Program_Settings.Size = new System.Drawing.Size(177, 49);
+            this.Program_Settings.TabIndex = 4;
+            this.Program_Settings.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.Program_Settings_ItemCheck);
+            // 
+            // notifyIcon1
+            // 
+            this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
+            this.notifyIcon1.Text = "notifyIcon1";
+            this.notifyIcon1.DoubleClick += new System.EventHandler(this.notifyIcon1_DoubleClick);
             // 
             // BatteryOptimizer
             // 
@@ -354,7 +341,6 @@
         }
 
         #endregion
-        private System.Windows.Forms.Button Com_Con_Dis;
         private System.Windows.Forms.Label Battery_Info;
         private System.Windows.Forms.TextBox Battery_Percentage;
         private System.Windows.Forms.TextBox Battery_LineStatus;

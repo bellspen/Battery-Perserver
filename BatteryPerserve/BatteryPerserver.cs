@@ -14,6 +14,8 @@ using System.Threading;
 using Microsoft.Win32;
 using System.IO;
 using System.Xml.Serialization;
+using System.Management.Automation;
+
 
 namespace BatteryPerserve
 {   
@@ -23,36 +25,92 @@ namespace BatteryPerserve
         [Serializable()]
         public struct Settings_BatteryOptimizer
         {           
-            public bool AutoConnect;
-            public bool StartMinimized;
+            public bool auto_connect;
+            public bool start_minimized;
             //public string LastCom;
-            public bool OptimizeSchedule;
-            public DateTime StartChargeTime;
-            public DateTime StopChargeTime;
-            public decimal BatteryRangeMin;
-            public decimal BatteryRangeMax;
+            public bool optimize_schedule;
+            public DateTime start_charge_time;
+            public DateTime stop_charge_time;
+            public decimal battery_range_min;
+            public decimal battery_range_max;
         }
+
+        public class BP_Packet1 //Total bytes: 64 
+        {
+            private uint prefix; // 0xF678 //4 bytes
+            public string ssid; // 30 bytes
+            public string pass; // 30 bytes
+
+            public BP_Packet1()
+            {
+                prefix = 0xF678;
+            }
+
+            public BP_Packet1( string p_ssid , string p_pass )
+            {
+                prefix = 0xF678;
+                ssid = p_ssid;
+                pass = p_pass;
+            }
+
+            public byte[] extract()
+            {
+                byte[] packet = new byte[64];
+                byte[] b_prefix = BitConverter.GetBytes( prefix );
+                byte[] b_ssid = System.Text.Encoding.ASCII.GetBytes( ssid );
+                byte[] b_pass = System.Text.Encoding.ASCII.GetBytes( pass );
+
+                int x = 0;
+
+                for (int y = 0; y < b_prefix.Length; y++, x++)
+                {
+                    packet[x] = b_prefix[y];
+                }
+
+                for (int y = 0; y < b_ssid.Length; y++, x++)
+                {
+                    packet[x] = b_ssid[y];
+                }
+
+                x = 34;
+
+                for (int y = 0; y < b_pass.Length; y++, x++)
+                {
+                    packet[x] = b_pass[y];
+                }
+
+                return packet;
+            }
+        } //END class BP_Packet1
+
+        public class BP_Packet2 //Total bytes: 5 
+        {
+            public uint prefix; // 0xF123 //4 bytes
+            public bool relay; // 0 - Open, 1 - Close
+        } //END class BP_Packet2
+
 
         //Class Data ---------------------------------------------------------------------
         private delegate void SafeCallDelegate(string text, string text2); //UpdatePowerInfo
         private delegate void SafeCallDelegate2(string text, bool warning); //OpenPort
-        //private SerialPort SP0;
-        private string LastConnectedCom;
-        private PowerStatus Pwr_Info;
 
-        private UdpClient BP_UDP_Server;
-        private IPEndPoint BP_EndPoint;
-        private TcpListener BP_TCP_Server;
-        private const int BP_ListenPort = 8000;
-        private bool BP_Search_Device;
+        private PowerStatus bp_power_info;
+        private WifiProfiles bp_profiles_form;
 
-        private Thread Pwr_Watching;
-        private Thread BP_Find_Device;
-        private Thread Port_Opening;
+        private UdpClient bp_udp_server;
+        private IPEndPoint bp_end_point;
+        private TcpListener bp_tcp_server;
+        private const int bp_listen_port = 8000;
+        private bool bp_search_device;
 
-        private bool Watch_Pwr; //Pwr_Watching Thread
-        //private bool Watch_OpenCheck; //Com_OpenCheck
-        private bool Pwr_Control;
+
+
+        private Thread bp_watch_power_thread;
+        private Thread bp_find_device_thread;
+        //private Thread port_opening;
+
+        private bool bp_watch_power; //Pwr_Watching Thread
+        private bool bp_power_control;
 
         //Class Functions ----------------------------------------------------------------
         public BatteryOptimizer()
@@ -69,36 +127,21 @@ namespace BatteryPerserve
             InitialRegistryCheck(); //Check Settings in Registry
 
             //Start UDP server to listen in for the Battery Opetimizer device:     
-            BP_UDP_Server = new UdpClient(BP_ListenPort);
-            BP_EndPoint = new IPEndPoint(IPAddress.Any, BP_ListenPort);
-            BP_Search_Device = true;
+            //bp_udp_server = new UdpClient(bp_listen_port);
+            //bp_end_point = new IPEndPoint(IPAddress.Any, bp_listen_port);
+            //bp_search_device = true;
 
-            ///Find_Coms();
-            //SP1 = new SerialPort();
+            bp_profiles_form = new WifiProfiles();
 
-            //if (Com_Selection.Items.Count == 0)
-            //MessageBox.Show("Please turn on Bluetooth.");
-            //else
-            //{              
-            //    if (Program_Settings.CheckedIndices.Contains(1) == true) //Auto Connect
-            //    {
-            //        if (LastConnectedCom == "")
-            //            MessageBox.Show("Auto Connect could not work because there is no previous connection.");
-            //        else
-            //        {
-            //            button_OptmizeBattery_Click();
-            //            //Watch_OpenCheck = true;
-            //            //Com_OpenCheck = new Thread(KeepOpenPort);
-            //            //Com_OpenCheck.Start();
-            //            //OpenPort(LastConnectedCom);
-            //        }
-            //    }
-            //}
+            bp_find_device_thread = new Thread( Find_Device );
+            bp_find_device_thread.Start();
+            //Find_Device();
 
-            Pwr_Control = true;
-            Watch_Pwr = true;
-            Pwr_Watching = new Thread(PowerWatch);
-            Pwr_Watching.Start();
+
+            //bp_power_control = true;
+            //bp_watch_power = true;
+            //bp_watch_power_thread = new Thread(PowerWatch);
+            //bp_watch_power_thread.Start();
         } //END Constructor
 
         private void InitialRegistryCheck()
@@ -111,33 +154,35 @@ namespace BatteryPerserve
 
             //Rest of Settings
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+            if (BatOpSettings.battery_range_max == 0)
+            {
+                InitializeRegistry();
+                BatOpSettings = RetrieveSettings();
+            }
+                
 
             //Auto Connect & Start Optimizing
-            if (BatOpSettings.AutoConnect == true)
+            if (BatOpSettings.auto_connect == true)
                 Program_Settings.SetItemChecked(1, true);
 
             //Start Minimized
-            if (BatOpSettings.StartMinimized == true)
+            if (BatOpSettings.start_minimized == true)
             {
                 Program_Settings.SetItemChecked(2, true);
                 this.WindowState = FormWindowState.Minimized;
             }
-            //Last Com connected to
-            //LastConnectedCom = BatOpSettings.LastCom;
-
-
 
             //Optimize Charge Schedule
-            if (BatOpSettings.OptimizeSchedule == true)
+            if (BatOpSettings.optimize_schedule == true)
                 checkBox_OptimizeChargeTime.Checked = true;
 
             //Charge Start Stop times
-            Battery_OptimizeChargeTime.Value = BatOpSettings.StartChargeTime;
-            Battery_NormalChargeTime.Value = BatOpSettings.StopChargeTime;
+            Battery_OptimizeChargeTime.Value = BatOpSettings.start_charge_time;
+            Battery_NormalChargeTime.Value = BatOpSettings.stop_charge_time;
 
             //Optimal Battery Range
-            BatteryMin.Value = BatOpSettings.BatteryRangeMin;
-            BatteryMax.Value = BatOpSettings.BatteryRangeMax;
+            BatteryMin.Value = BatOpSettings.battery_range_min;
+            BatteryMax.Value = BatOpSettings.battery_range_max;
 
         } //END InitialRegistryCheck
 
@@ -145,14 +190,14 @@ namespace BatteryPerserve
         {
             Settings_BatteryOptimizer InitialSettings = new Settings_BatteryOptimizer
             {
-                AutoConnect = false,
-                StartMinimized = false,
-                LastCom = "",
-                OptimizeSchedule = false,
-                StartChargeTime = Battery_OptimizeChargeTime.Value,
-                StopChargeTime = Battery_NormalChargeTime.Value,
-                BatteryRangeMin = BatteryMin.Value,
-                BatteryRangeMax = BatteryMax.Value
+                auto_connect = false,
+                start_minimized = false,
+                //LastCom = "",
+                optimize_schedule = false,
+                start_charge_time = Battery_OptimizeChargeTime.Value,
+                stop_charge_time = Battery_NormalChargeTime.Value,
+                battery_range_min = BatteryMin.Value,
+                battery_range_max = BatteryMax.Value
             };
 
             RegistryKey key1 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");
@@ -193,9 +238,53 @@ namespace BatteryPerserve
         {
             Find_Device_Status.Text = "Searching for a Battery Optimizer Device";
 
-            while (BP_Search_Device == true)
-            {
-                byte[] received = BP_UDP_Server.Receive(ref BP_EndPoint);
+            Thread.Sleep( 1000 );
+            bp_profiles_form.ShowDialog();
+            bp_profiles_form.Activate();
+            List<string> wifi_profile = bp_profiles_form.wp_profile;
+            BP_Packet1 wifi = new BP_Packet1( wifi_profile[0], wifi_profile[1] );
+            byte[] wifi_packet = wifi.extract();
+
+
+
+
+            //while (bp_search_device == true)
+            //{
+            //    byte[] received = bp_udp_server.Receive(ref bp_end_point);
+            //    BP_Packet2 rec_data = new BP_Packet2();
+            //    int rec_len = received.Length;
+            //    int rec_ind = 0;
+
+            //    while (rec_ind > rec_len)
+            //    {
+            //        rec_data.prefix |= received[rec_ind];
+
+            //        if (rec_data.prefix == 0xF123)
+            //        {
+            //            rec_data.relay = BitConverter.ToBoolean(received, rec_ind + 1);
+            //            BP_Packet1 send_data = new BP_Packet1();
+            //            send_data.prefix = 0xF678;
+            //            //send_data.SSID = 
+
+
+            //            var results = bp_collect_all_wifi_profiles.Invoke();
+
+
+            //        }
+            //        else
+            //        {
+            //            //rec_data.Prefix <<= 1;
+            //        }
+
+
+            //    }
+
+
+
+
+
+
+            //}
 
 
 
@@ -203,44 +292,16 @@ namespace BatteryPerserve
 
 
 
-            }
-            
-            
-            
-            
-            
-            
-            
             //foreach(string i in SerialPort.GetPortNames())
             //{
             //    Com_Selection.Items.Add(i);
             //}           
 
-        } //END Find_Coms
+        } //END Find_Device
 
-        private void Com_Con_Dis_Click(object sender, EventArgs e)
-        {
-            if (Com_Con_Dis.Text == "Connect")
-            {
-                OpenPort(Com_Selection.SelectedItem.ToString(), true);
-                if (Program_Settings.CheckedIndices.Contains(1) == true) //Check Auto connect
-                {
-                    Watch_OpenCheck = true;
-                    Com_OpenCheck = new Thread(KeepOpenPort);
-                    Com_OpenCheck.Start();
-                }
-            }
-            else //Disconnect
-            {
-                if (Program_Settings.CheckedIndices.Contains(1) == true) //Check Auto connect
-                {
-                    Watch_OpenCheck = false;
-                    if (Com_OpenCheck != null && Com_OpenCheck.IsAlive)
-                        Com_OpenCheck.Abort();
-                }
-                ClosePort();
-            }
-        } //END Com_Con_Dis
+
+
+
 
         private void OnPowerChange(object s, PowerModeChangedEventArgs e)
         {
@@ -256,7 +317,7 @@ namespace BatteryPerserve
 
         private void KeepOpenPort()
         {
-            while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
+            //while (Watch_OpenCheck) //Check later to see if can just try to open after connection lost, perhaps use windows form serialport
             {               
                 //if (SP1.IsOpen == false)
                 //    OpenPort(LastConnectedCom, false);                   
@@ -265,71 +326,7 @@ namespace BatteryPerserve
             }
         } //END KeepOpenPort
 
-        private void OpenPort(string Com_Name, bool warning) //Test later to see if needs a bool to see if in main thread or not
-        {
-            if (Com_Con_Dis.InvokeRequired)
-            {
-                var d = new SafeCallDelegate2(OpenPort);
-                Invoke(d, new object[] { Com_Name, warning });
-            }
-            else
-            {
-                try
-                {
-                    //SP1.PortName = Com_Name; //name
-                    //SP1.BaudRate = 9600; //baudrate
-                    //Port_Opening = new Thread(SP1.Open); //Put on thread, so program does not freeze up
-                    //Port_Opening.Start();
-                    //Port_Opening.Join();
-                    //SP1.Open(); //open serial port
-                                //MessageBox.Show("Port Opened Successfully !");
 
-                    //LastConnectedCom = Com_Name;
-
-
-
-
-                    Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-                    //BatOpSettings.LastCom = Com_Name;
-                    SaveSettings(BatOpSettings);
-
-                    Com_Con_Dis.Text = "Disconnect";
-                    button_OptmizeBattery.Enabled = true;
-                }
-                catch
-                {
-                    if (warning)
-                        MessageBox.Show("Could Not Open Specified Port! Make sure device is on."); //Change
-                }
-            }
-
-            
-        } //END OpenPort
-
-        private void ClearAllGpio()
-        {
-            SP1.DiscardInBuffer(); //discard input buffer
-            SP1.Write("gpio writeall 00" + "\r"); //writing "gpio writeall xx" command to serial port //Clearing all gpio's
-            System.Threading.Thread.Sleep(200); //system sleep
-            SP1.DiscardOutBuffer(); //discard output buffer
-        } //END ClearAllGpio
-
-        private void ClosePort()
-        {
-            try
-            {
-                ClearAllGpio();
-                SP1.Close(); //close serial port
-                //MessageBox.Show("Port Closed Successfully !");
-                Com_Con_Dis.Text = "Connect";
-                button_OptmizeBattery.Enabled = false;
-            }
-            catch
-            {
-                MessageBox.Show("Could Not Close Specified Port !");
-            }
-
-        } //END ClosePort
 
         private void UpdatePowerInfo(string percent, string charge_status)
         {
@@ -357,15 +354,15 @@ namespace BatteryPerserve
 
         private void PowerWatch()
         {
-            while (Watch_Pwr) //While true
+            while (bp_watch_power) //While true
             {
                 //Update Battery Info
-                Pwr_Info = SystemInformation.PowerStatus; //Get Power Status
+                bp_power_info = SystemInformation.PowerStatus; //Get Power Status
                                                
-                if (Pwr_Info.PowerLineStatus.ToString() == "Online") 
-                    UpdatePowerInfo((Pwr_Info.BatteryLifePercent * 100).ToString() + "%", "Charging");              
+                if (bp_power_info.PowerLineStatus.ToString() == "Online") 
+                    UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Charging");              
                 else
-                    UpdatePowerInfo((Pwr_Info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging");
+                    UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging");
                 
 
                 //Check if able to optimize battery
@@ -375,35 +372,29 @@ namespace BatteryPerserve
                     if (CheckOptimizationSchedule()) 
                     {
 
-                        if (SP1.IsOpen) //Check Port Open && not
+                        if (false) //Check Port Open && not
                         {
-                            if (Pwr_Info.BatteryLifePercent >= (float)BatteryMax.Value / 100)
+                            if (bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100)
                             { //combine if stmt's
-                                if (Pwr_Info.PowerLineStatus.ToString() == "Online")
+                                if (bp_power_info.PowerLineStatus.ToString() == "Online")
                                 {
-                                    SP1.DiscardInBuffer(); //discard input buffer
-                                    SP1.Write("gpio set " + "0" + "\r"); //writing "gpio set X" command to serial port
-                                    System.Threading.Thread.Sleep(200); //system sleep
-                                    SP1.DiscardOutBuffer(); //discard output buffer
+
                                 }
 
                             }
-                            else if (Pwr_Info.BatteryLifePercent <= (float)BatteryMin.Value / 100)
+                            else if (bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100)
                             {
-                                if (Pwr_Info.PowerLineStatus.ToString() == "Offline")
+                                if (bp_power_info.PowerLineStatus.ToString() == "Offline")
                                 {
-                                    SP1.DiscardInBuffer(); //discard input buffer
-                                    SP1.Write("gpio clear " + "0" + "\r"); //writing "gpio clear X" command to serial port
-                                    System.Threading.Thread.Sleep(200); //system sleep
-                                    SP1.DiscardOutBuffer(); //discard output buffer
+
                                 }
 
                             }
                         } //END Check Port
 
                     } //END Check Charge times
-                    else
-                        ClearAllGpio();
+                    //else
+                        //ClearAllGpio();
 
                 } //END Checking Optimizaion active
                 Thread.Sleep(1000);
@@ -420,13 +411,13 @@ namespace BatteryPerserve
             {
                 Battery_OptimizeChargeTime.Enabled = true;
                 Battery_NormalChargeTime.Enabled = true;
-                BatOpSettings.OptimizeSchedule = true;
+                BatOpSettings.optimize_schedule = true;
             }
             else //true
             {
                 Battery_OptimizeChargeTime.Enabled = false;
                 Battery_NormalChargeTime.Enabled = false;
-                BatOpSettings.OptimizeSchedule = false;
+                BatOpSettings.optimize_schedule = false;
             }
 
             SaveSettings(BatOpSettings);
@@ -437,8 +428,8 @@ namespace BatteryPerserve
             BatteryMin.Value = 40;
             BatteryMax.Value = 60;
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-            BatOpSettings.BatteryRangeMin = BatteryMin.Value;
-            BatOpSettings.BatteryRangeMax = BatteryMax.Value;
+            BatOpSettings.battery_range_min = BatteryMin.Value;
+            BatOpSettings.battery_range_max = BatteryMax.Value;
             SaveSettings(BatOpSettings);
 
         } //END Defaults
@@ -454,7 +445,7 @@ namespace BatteryPerserve
             {
                 button_OptmizeBattery.Text = "OFF";
                 button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-                ClearAllGpio();
+                //clear pin
             }               
         } //END Optimize Battery
 
@@ -469,7 +460,7 @@ namespace BatteryPerserve
             {
                 button_OptmizeBattery.Text = "OFF";
                 button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-                ClearAllGpio();
+                //clear pin
             }
         } //END Optimize Battery
 
@@ -505,17 +496,15 @@ namespace BatteryPerserve
 
                 if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked
                 {
-                    BatOpSettings.AutoConnect = true;
-                    Watch_OpenCheck = true;
-                    Com_OpenCheck = new Thread(KeepOpenPort);
-                    Com_OpenCheck.Start();
+                    BatOpSettings.auto_connect = true;
+                    //Watch_OpenCheck = true;
+
                 }
                 else //Checked, being removed
                 {
-                    BatOpSettings.AutoConnect = false;
-                    Watch_OpenCheck = false;
-                    if (Com_OpenCheck != null && Com_OpenCheck.IsAlive)
-                        Com_OpenCheck.Abort();
+                    BatOpSettings.auto_connect = false;
+                    //Watch_OpenCheck = false;
+
                 }
 
                 SaveSettings(BatOpSettings);
@@ -526,9 +515,9 @@ namespace BatteryPerserve
                 Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
                 if (Program_Settings.CheckedIndices.Contains(2) == false) //Not checked, being checked               
-                    BatOpSettings.StartMinimized = true;
+                    BatOpSettings.start_minimized = true;
                 else //Checked, being removed
-                    BatOpSettings.StartMinimized = false;
+                    BatOpSettings.start_minimized = false;
 
                 SaveSettings(BatOpSettings);
             }
@@ -538,28 +527,28 @@ namespace BatteryPerserve
         private void Battery_OptimizeChargeTime_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-            BatOpSettings.StartChargeTime = Battery_OptimizeChargeTime.Value;
+            BatOpSettings.start_charge_time = Battery_OptimizeChargeTime.Value;
             SaveSettings(BatOpSettings);
         } //END Battery_OptimizeChargeTime_ValueChanged
 
         private void Battery_NormalChargeTime_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-            BatOpSettings.StopChargeTime = Battery_NormalChargeTime.Value;
+            BatOpSettings.stop_charge_time = Battery_NormalChargeTime.Value;
             SaveSettings(BatOpSettings);
         } //END Battery_NormalChargeTime_ValueChanged
 
         private void BatteryMin_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-            BatOpSettings.BatteryRangeMin = BatteryMin.Value;
+            BatOpSettings.battery_range_min = BatteryMin.Value;
             SaveSettings(BatOpSettings);
         } //END BatteryMin_ValueChanged
 
         private void BatteryMax_ValueChanged(object sender, EventArgs e)
         {
             Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-            BatOpSettings.BatteryRangeMax = BatteryMax.Value;
+            BatOpSettings.battery_range_max = BatteryMax.Value;
             SaveSettings(BatOpSettings);
         } //END BatteryMax_ValueChanged
 

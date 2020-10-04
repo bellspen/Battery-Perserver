@@ -15,7 +15,7 @@ using Microsoft.Win32;
 using System.IO;
 using System.Xml.Serialization;
 using System.Management.Automation;
-using System.Security.Cryptography;
+
 
 
 namespace BatteryPerserve
@@ -286,18 +286,24 @@ namespace BatteryPerserve
 					//for (int x = 0, y = 3; y < packet2.Length; x++, y++)
 					//	encrypted_data[x] = packet2[y];
 
+					BP_Packets packet_manager = new BP_Packets();
 
-					BP_Helper helper = new BP_Helper();
-					byte[] to_encrypt;
-					string test_data = "AES test data 1234 test. This is long data string test of a message with a higher byte size.. This is the end of the message1234";
-					to_encrypt = Encoding.ASCII.GetBytes( test_data );
-
-					byte[] encrypted_data = helper.EncryptBytes_Aes( to_encrypt, bp_aes_key, bp_aes_iv );
+					byte[] relay_packet = packet_manager.BuildRelayPacket( 0x01 );
 
 
-					byte[] decrypted_data = helper.DecryptBytes_Aes( encrypted_data, bp_aes_key, bp_aes_iv );
 
-					string str_dec_data = Encoding.UTF8.GetString( decrypted_data );
+					//BP_Helper helper = new BP_Helper();
+					//AesGcm256 gcm256 = new AesGcm256();
+					//byte[] to_encrypt;
+					//string test_data = "AES test data 1234 test. This is long data string test of a message with a higher byte size.. This is the end of the message1234";
+					//to_encrypt = Encoding.ASCII.GetBytes( test_data );
+
+					//byte[] encrypted_data = gcm256.Encrypt( to_encrypt, bp_aes_key, bp_aes_iv, null );
+
+
+					//byte[] decrypted_data = gcm256.Decrypt( encrypted_data, bp_aes_key, bp_aes_iv, null );
+
+					//string str_dec_data = Encoding.UTF8.GetString( decrypted_data );
 
 
 					//stream.Write( packet2, 0, packet2.Length ); //Send

@@ -276,7 +276,7 @@ namespace BatteryPerserve
 				//Send Device info to open/close:
 				if (true == bp_send_relay)
 				{
-					//NetworkStream stream = bp_client_device.GetStream();
+					NetworkStream stream = bp_client_device.GetStream();
 					//BP_Relay_Packet relay_packet = new BP_Relay_Packet();
 					//byte[] packet2 = relay_packet.extract( bp_relay, bp_aes_key, bp_aes_iv );
 
@@ -306,7 +306,7 @@ namespace BatteryPerserve
 					//string str_dec_data = Encoding.UTF8.GetString( decrypted_data );
 
 
-					//stream.Write( packet2, 0, packet2.Length ); //Send
+					stream.Write( relay_packet, 0, relay_packet.Length ); //Send
 
 					bp_send_relay = false;
 				}

@@ -61,6 +61,11 @@ namespace BatteryPerserve
 			*/
 			//Prepare to encrypt:
 			to_encrypt[0] = relay;
+			to_encrypt[1] = (byte)'R';
+			to_encrypt[2] = (byte)'E';
+			to_encrypt[3] = (byte)'L';
+			to_encrypt[4] = (byte)'A';
+			to_encrypt[5] = (byte)'Y';
 
 			//Encrypt:
 			encrypted_data = gcm256.Encrypt( to_encrypt, aes_key, iv, ass_data );
@@ -81,7 +86,7 @@ namespace BatteryPerserve
 			rp_index += gcm256.IVBitSize / 8;
 
 			relay_packet[rp_index] = (byte)(ed_size & 0xFF); //Encrypted data size
-			relay_packet[rp_index + 1] = (byte)((ed_size & 0xFF00) >> 4);
+			relay_packet[rp_index + 1] = (byte)((ed_size & 0xFF00) >> 8);
 			rp_index += 2;
 
 			encrypted_data.CopyTo( relay_packet, rp_index); //Encrypted data & Tag/Mac
@@ -93,7 +98,7 @@ namespace BatteryPerserve
 			relay_packet[rp_index + 3] = prefix_cs4;
 			rp_index += 4;
 
-			for (int x = 0; x < relay_packet.Length - 1; x++) //Checksum
+			for (int x = 0; x < relay_packet.Length - 2; x++) //Checksum
 			{
 				checksum ^= relay_packet[x];
 			}
@@ -108,6 +113,74 @@ namespace BatteryPerserve
 		public byte[] BuildWifiPacket( string p_ssid, string p_pass )
 		{
 			byte[] wifi_packet = null;
+			byte[] iv = gcm256.NewIv();
+			byte[] to_encrypt = new byte[128];
+			byte[] ass_data = Encoding.UTF8.GetBytes( associated_data[0] );
+			byte[] encrypted_data;
+			byte checksum = 0x00;
+			UInt16 ed_size = 0;
+			int wp_index = 0;
+			int wp_size = 28;
+			/*
+			 * 4 - Prefix
+			 * 1 - Msg Type
+			 * 16 - IV
+			 * 2 - Encrypted & Tag/Mac data size
+			 * ?? - Encrypted & Tag/Mac data
+			 * 4 - Checksum Prefix
+			 * 1 - Checksum
+			*/
+			//Prepare to encrypt:
+
+
+
+
+
+
+
+
+
+
+
+			//Encrypt:
+			encrypted_data = gcm256.Encrypt( to_encrypt, aes_key, iv, ass_data );
+
+			//Build Packet:
+			ed_size = (UInt16)encrypted_data.Length;
+			wp_size += ed_size;
+			wifi_packet = new byte[wp_size];
+
+			wifi_packet[0] = prefix1; //Prefix
+			wifi_packet[1] = prefix2;
+			wifi_packet[2] = prefix3;
+			wifi_packet[3] = prefix4;
+			wifi_packet[4] = 0x00; //Msg Type
+			wp_index += 5;
+
+			iv.CopyTo( wifi_packet, wp_index ); //IV
+			wp_index += gcm256.IVBitSize / 8;
+
+			wifi_packet[wp_index] = (byte)(ed_size & 0xFF); //Encrypted data size
+			wifi_packet[wp_index + 1] = (byte)((ed_size & 0xFF00) >> 8);
+			wp_index += 2;
+
+			encrypted_data.CopyTo( wifi_packet, wp_index ); //Encrypted data & Tag/Mac
+			wp_index += ed_size;
+
+			wifi_packet[wp_index] = prefix_cs1; //Checksum Prefix
+			wifi_packet[wp_index + 1] = prefix_cs2;
+			wifi_packet[wp_index + 2] = prefix_cs3;
+			wifi_packet[wp_index + 3] = prefix_cs4;
+			wp_index += 4;
+
+			for (int x = 0; x < wifi_packet.Length - 2; x++) //Checksum
+			{
+				checksum ^= wifi_packet[x];
+			}
+
+			wifi_packet[wp_index] = checksum;
+
+
 
 
 			return wifi_packet;

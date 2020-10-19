@@ -55,12 +55,6 @@ namespace BatteryPerserve
 		private bool bp_listen_for_tcp;
 		private bool bp_have_client;
 
-		//AES:
-		private string bp_aes_key_str;
-		private byte[] bp_aes_key;
-		private string bp_aes_iv_str;
-		private byte[] bp_aes_iv;
-
 
 		//Battery/Power:
 		private PowerStatus bp_power_info;
@@ -95,11 +89,6 @@ namespace BatteryPerserve
 			bp_tcp_server.Start();
 
 
-			//Set AES:
-			bp_aes_key_str = "qbEUMjP4qiMhLmGJ";
-			bp_aes_key = Encoding.UTF8.GetBytes( bp_aes_key_str );
-			bp_aes_iv_str = "BvgETwTVstHNzsfY";
-			bp_aes_iv = Encoding.UTF8.GetBytes( bp_aes_iv_str );
 
 			//WIFI Profile form:
 			//bp_profiles_form = new WifiProfiles();
@@ -277,36 +266,13 @@ namespace BatteryPerserve
 				if (true == bp_send_relay)
 				{
 					NetworkStream stream = bp_client_device.GetStream();
-					//BP_Relay_Packet relay_packet = new BP_Relay_Packet();
-					//byte[] packet2 = relay_packet.extract( bp_relay, bp_aes_key, bp_aes_iv );
-
-
-					//int ps2_size = packet2[1] << 4 | packet2[2];
-					//byte[] encrypted_data = new byte[ps2_size];
-					//for (int x = 0, y = 3; y < packet2.Length; x++, y++)
-					//	encrypted_data[x] = packet2[y];
-
 					BP_Packets packet_manager = new BP_Packets();
 
 					byte[] relay_packet = packet_manager.BuildRelayPacket( 0x01 );
+					//byte[] wifi_packet = packet_manager.BuildWifiPacket( "TELUS3570" , "K2bfq4YArKDg" );
 
-
-
-					//BP_Helper helper = new BP_Helper();
-					//AesGcm256 gcm256 = new AesGcm256();
-					//byte[] to_encrypt;
-					//string test_data = "AES test data 1234 test. This is long data string test of a message with a higher byte size.. This is the end of the message1234";
-					//to_encrypt = Encoding.ASCII.GetBytes( test_data );
-
-					//byte[] encrypted_data = gcm256.Encrypt( to_encrypt, bp_aes_key, bp_aes_iv, null );
-
-
-					//byte[] decrypted_data = gcm256.Decrypt( encrypted_data, bp_aes_key, bp_aes_iv, null );
-
-					//string str_dec_data = Encoding.UTF8.GetString( decrypted_data );
-
-
-					stream.Write( relay_packet, 0, relay_packet.Length ); //Send
+					stream.Write( relay_packet, 0, relay_packet.Length ); //Send relay
+					//stream.Write( wifi_packet, 0, wifi_packet.Length ); //Send wifi
 
 					bp_send_relay = false;
 				}

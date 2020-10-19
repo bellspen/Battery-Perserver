@@ -75,16 +75,12 @@
 			this.Battery_OptimizeChargeTime = new System.Windows.Forms.DateTimePicker();
 			this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
 			this.Panel_Connection = new System.Windows.Forms.Panel();
-			this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-			this.Find_Device_Status = new System.Windows.Forms.ToolStripStatusLabel();
-			this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
 			this.Program_Settings = new System.Windows.Forms.CheckedListBox();
 			this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
 			this.Panel_Battery_Info.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
 			this.Panel_Connection.SuspendLayout();
-			this.statusStrip1.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// Battery_Info
@@ -181,36 +177,36 @@
 			// 
 			this.BatteryMax.Location = new System.Drawing.Point(269, 28);
 			this.BatteryMax.Minimum = new decimal(new int[] {
-			10,
-			0,
-			0,
-			0});
+            10,
+            0,
+            0,
+            0});
 			this.BatteryMax.Name = "BatteryMax";
 			this.BatteryMax.Size = new System.Drawing.Size(39, 20);
 			this.BatteryMax.TabIndex = 17;
 			this.BatteryMax.Value = new decimal(new int[] {
-			60,
-			0,
-			0,
-			0});
+            60,
+            0,
+            0,
+            0});
 			this.BatteryMax.ValueChanged += new System.EventHandler(this.BatteryMax_ValueChanged);
 			// 
 			// BatteryMin
 			// 
 			this.BatteryMin.Location = new System.Drawing.Point(183, 27);
 			this.BatteryMin.Minimum = new decimal(new int[] {
-			10,
-			0,
-			0,
-			0});
+            10,
+            0,
+            0,
+            0});
 			this.BatteryMin.Name = "BatteryMin";
 			this.BatteryMin.Size = new System.Drawing.Size(44, 20);
 			this.BatteryMin.TabIndex = 16;
 			this.BatteryMin.Value = new decimal(new int[] {
-			40,
-			0,
-			0,
-			0});
+            40,
+            0,
+            0,
+            0});
 			this.BatteryMin.ValueChanged += new System.EventHandler(this.BatteryMin_ValueChanged);
 			// 
 			// label_BatteryMax
@@ -280,43 +276,20 @@
 			// 
 			// Panel_Connection
 			// 
-			this.Panel_Connection.Controls.Add(this.statusStrip1);
 			this.Panel_Connection.Controls.Add(this.Program_Settings);
 			this.Panel_Connection.Location = new System.Drawing.Point(12, 12);
 			this.Panel_Connection.Name = "Panel_Connection";
 			this.Panel_Connection.Size = new System.Drawing.Size(214, 269);
 			this.Panel_Connection.TabIndex = 8;
 			// 
-			// statusStrip1
-			// 
-			this.statusStrip1.Dock = System.Windows.Forms.DockStyle.Top;
-			this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-			this.Find_Device_Status,
-			this.toolStripStatusLabel1});
-			this.statusStrip1.Location = new System.Drawing.Point(0, 0);
-			this.statusStrip1.Name = "statusStrip1";
-			this.statusStrip1.Size = new System.Drawing.Size(214, 22);
-			this.statusStrip1.TabIndex = 5;
-			this.statusStrip1.Text = "statusStrip1";
-			// 
-			// Find_Device_Status
-			// 
-			this.Find_Device_Status.Name = "Find_Device_Status";
-			this.Find_Device_Status.Size = new System.Drawing.Size(0, 17);
-			// 
-			// toolStripStatusLabel1
-			// 
-			this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-			this.toolStripStatusLabel1.Size = new System.Drawing.Size(0, 17);
-			// 
 			// Program_Settings
 			// 
 			this.Program_Settings.CheckOnClick = true;
 			this.Program_Settings.FormattingEnabled = true;
 			this.Program_Settings.Items.AddRange(new object[] {
-			"Start Program at Boot",
-			"Auto Connect & Start Optimizing",
-			"Start Minimized"});
+            "Start Program at Boot",
+            "Auto Connect & Start Optimizing",
+            "Start Minimized"});
 			this.Program_Settings.Location = new System.Drawing.Point(6, 129);
 			this.Program_Settings.Name = "Program_Settings";
 			this.Program_Settings.Size = new System.Drawing.Size(177, 49);
@@ -347,9 +320,6 @@
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).EndInit();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).EndInit();
 			this.Panel_Connection.ResumeLayout(false);
-			this.Panel_Connection.PerformLayout();
-			this.statusStrip1.ResumeLayout(false);
-			this.statusStrip1.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -374,9 +344,6 @@
 		private System.Windows.Forms.Label label_StartCharge;
 		private System.Windows.Forms.CheckedListBox Program_Settings;
 		private System.Windows.Forms.NotifyIcon notifyIcon1;
-		private System.Windows.Forms.StatusStrip statusStrip1;
-		private System.Windows.Forms.ToolStripStatusLabel Find_Device_Status;
-		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
 	}
 }
 

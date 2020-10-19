@@ -115,7 +115,9 @@ namespace BatteryPerserve
 			byte[] wifi_packet = null;
 			byte[] iv = gcm256.NewIv();
 			byte[] to_encrypt = new byte[128];
-			byte[] ass_data = Encoding.UTF8.GetBytes( associated_data[0] );
+			byte[] ssid = Encoding.UTF8.GetBytes( p_ssid );
+			byte[] pass = Encoding.UTF8.GetBytes( p_pass );
+			byte[] ass_data = Encoding.UTF8.GetBytes( associated_data[1] );
 			byte[] encrypted_data;
 			byte checksum = 0x00;
 			UInt16 ed_size = 0;
@@ -131,15 +133,8 @@ namespace BatteryPerserve
 			 * 1 - Checksum
 			*/
 			//Prepare to encrypt:
-
-
-
-
-
-
-
-
-
+			ssid.CopyTo( to_encrypt, 0 );
+			pass.CopyTo( to_encrypt, 50 );
 
 
 			//Encrypt:
@@ -154,7 +149,7 @@ namespace BatteryPerserve
 			wifi_packet[1] = prefix2;
 			wifi_packet[2] = prefix3;
 			wifi_packet[3] = prefix4;
-			wifi_packet[4] = 0x00; //Msg Type
+			wifi_packet[4] = 0x01; //Msg Type
 			wp_index += 5;
 
 			iv.CopyTo( wifi_packet, wp_index ); //IV

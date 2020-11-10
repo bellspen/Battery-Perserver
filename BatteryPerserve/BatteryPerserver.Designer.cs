@@ -13,33 +13,6 @@
 		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
 		protected override void Dispose(bool disposing)
 		{
-			//Set Thread bools to false:
-			bp_watch_power		= false;
-			bp_have_client		= false; 
-			bp_listen_for_tcp	= false;
-
-			//Stop Threads:
-			if (null != bp_watch_power_thread && bp_watch_power_thread.IsAlive == true) //Stop power watching
-			{
-				bp_watch_power_thread.Abort(); //Stop monitoring battery
-				bp_watch_power_thread = null;
-			}
-
-			if (null != bp_tcp_talker_thread && bp_tcp_talker_thread.IsAlive == true) //Stop talking to client
-			{
-				bp_tcp_talker_thread.Abort();
-				bp_tcp_talker_thread = null;
-			}
-
-			if (null != bp_tcp_listening && bp_tcp_listening.IsAlive == true) //Stop listening for clients
-			{
-				bp_tcp_listening.Abort();
-				bp_tcp_listening = null;
-			}
-
-			//Stop TCP Server:
-			bp_tcp_server.Stop();
-
 			//Stock code:
 			if (disposing && (components != null))
 			{
@@ -75,6 +48,10 @@
 			this.Battery_OptimizeChargeTime = new System.Windows.Forms.DateTimePicker();
 			this.Battery_NormalChargeTime = new System.Windows.Forms.DateTimePicker();
 			this.Panel_Connection = new System.Windows.Forms.Panel();
+			this.button_restore_no_device = new System.Windows.Forms.Button();
+			this.button_search_for_device = new System.Windows.Forms.Button();
+			this.textBox_device_status = new System.Windows.Forms.TextBox();
+			this.label_device_status = new System.Windows.Forms.Label();
 			this.Program_Settings = new System.Windows.Forms.CheckedListBox();
 			this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
 			this.Panel_Battery_Info.SuspendLayout();
@@ -152,7 +129,6 @@
 			// button_OptmizeBattery
 			// 
 			this.button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-			this.button_OptmizeBattery.Enabled = false;
 			this.button_OptmizeBattery.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
 			this.button_OptmizeBattery.Location = new System.Drawing.Point(4, 54);
 			this.button_OptmizeBattery.Name = "button_OptmizeBattery";
@@ -276,11 +252,53 @@
 			// 
 			// Panel_Connection
 			// 
+			this.Panel_Connection.Controls.Add(this.button_restore_no_device);
+			this.Panel_Connection.Controls.Add(this.button_search_for_device);
+			this.Panel_Connection.Controls.Add(this.textBox_device_status);
+			this.Panel_Connection.Controls.Add(this.label_device_status);
 			this.Panel_Connection.Controls.Add(this.Program_Settings);
 			this.Panel_Connection.Location = new System.Drawing.Point(12, 12);
 			this.Panel_Connection.Name = "Panel_Connection";
 			this.Panel_Connection.Size = new System.Drawing.Size(214, 269);
 			this.Panel_Connection.TabIndex = 8;
+			// 
+			// button_restore_no_device
+			// 
+			this.button_restore_no_device.ForeColor = System.Drawing.Color.Black;
+			this.button_restore_no_device.Location = new System.Drawing.Point(6, 184);
+			this.button_restore_no_device.Name = "button_restore_no_device";
+			this.button_restore_no_device.Size = new System.Drawing.Size(138, 23);
+			this.button_restore_no_device.TabIndex = 8;
+			this.button_restore_no_device.Text = "Reset Device Connection";
+			this.button_restore_no_device.UseVisualStyleBackColor = true;
+			this.button_restore_no_device.Click += new System.EventHandler(this.button_restore_no_device_Click);
+			// 
+			// button_search_for_device
+			// 
+			this.button_search_for_device.ForeColor = System.Drawing.Color.Black;
+			this.button_search_for_device.Location = new System.Drawing.Point(9, 54);
+			this.button_search_for_device.Name = "button_search_for_device";
+			this.button_search_for_device.Size = new System.Drawing.Size(107, 23);
+			this.button_search_for_device.TabIndex = 7;
+			this.button_search_for_device.Text = "Search For Device";
+			this.button_search_for_device.UseVisualStyleBackColor = true;
+			this.button_search_for_device.Click += new System.EventHandler(this.button_search_for_device_Click);
+			// 
+			// textBox_device_status
+			// 
+			this.textBox_device_status.Location = new System.Drawing.Point(9, 27);
+			this.textBox_device_status.Name = "textBox_device_status";
+			this.textBox_device_status.Size = new System.Drawing.Size(148, 20);
+			this.textBox_device_status.TabIndex = 6;
+			// 
+			// label_device_status
+			// 
+			this.label_device_status.AutoSize = true;
+			this.label_device_status.Location = new System.Drawing.Point(6, 11);
+			this.label_device_status.Name = "label_device_status";
+			this.label_device_status.Size = new System.Drawing.Size(74, 13);
+			this.label_device_status.TabIndex = 5;
+			this.label_device_status.Text = "Device Status";
 			// 
 			// Program_Settings
 			// 
@@ -314,12 +332,14 @@
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "BatteryOptimizer";
 			this.Text = "Battery Optimizer";
+			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.BatteryOptimizer_FormClosed);
 			this.Resize += new System.EventHandler(this.BatteryOptimizer_Resize);
 			this.Panel_Battery_Info.ResumeLayout(false);
 			this.Panel_Battery_Info.PerformLayout();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).EndInit();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).EndInit();
 			this.Panel_Connection.ResumeLayout(false);
+			this.Panel_Connection.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -344,6 +364,10 @@
 		private System.Windows.Forms.Label label_StartCharge;
 		private System.Windows.Forms.CheckedListBox Program_Settings;
 		private System.Windows.Forms.NotifyIcon notifyIcon1;
+		private System.Windows.Forms.TextBox textBox_device_status;
+		private System.Windows.Forms.Label label_device_status;
+		private System.Windows.Forms.Button button_search_for_device;
+		private System.Windows.Forms.Button button_restore_no_device;
 	}
 }
 

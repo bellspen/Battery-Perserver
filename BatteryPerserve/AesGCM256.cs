@@ -19,6 +19,9 @@ namespace BatteryPerserve
 		public readonly int IVBitSize = 128;
 		public readonly int MacBitSize = 128;
 		public readonly int KeyBitSize = 256;
+		public readonly int IVByteSize = 16;
+		public readonly int MacBytetSize = 16;
+		public readonly int KeyBytetSize = 32;
 
 
 		public byte[] NewKey()

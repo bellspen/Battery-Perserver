@@ -54,10 +54,12 @@
 			this.label_device_status = new System.Windows.Forms.Label();
 			this.Program_Settings = new System.Windows.Forms.CheckedListBox();
 			this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
+			this.errorProvider_device_status = new System.Windows.Forms.ErrorProvider(this.components);
 			this.Panel_Battery_Info.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMax)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).BeginInit();
 			this.Panel_Connection.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)(this.errorProvider_device_status)).BeginInit();
 			this.SuspendLayout();
 			// 
 			// Battery_Info
@@ -320,6 +322,10 @@
 			this.notifyIcon1.Text = "notifyIcon1";
 			this.notifyIcon1.DoubleClick += new System.EventHandler(this.notifyIcon1_DoubleClick);
 			// 
+			// errorProvider_device_status
+			// 
+			this.errorProvider_device_status.ContainerControl = this;
+			// 
 			// BatteryOptimizer
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -340,6 +346,7 @@
 			((System.ComponentModel.ISupportInitialize)(this.BatteryMin)).EndInit();
 			this.Panel_Connection.ResumeLayout(false);
 			this.Panel_Connection.PerformLayout();
+			((System.ComponentModel.ISupportInitialize)(this.errorProvider_device_status)).EndInit();
 			this.ResumeLayout(false);
 
 		}
@@ -368,6 +375,7 @@
 		private System.Windows.Forms.Label label_device_status;
 		private System.Windows.Forms.Button button_search_for_device;
 		private System.Windows.Forms.Button button_restore_no_device;
+		private System.Windows.Forms.ErrorProvider errorProvider_device_status;
 	}
 }
 

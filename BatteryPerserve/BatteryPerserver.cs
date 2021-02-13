@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Timers;
 using System.IO.Ports;
 using System.Net;
 using System.Net.Sockets;
@@ -26,10 +27,14 @@ namespace BatteryPerserve
 		//Delegates:
 		private delegate void SafeCallDelegate(string text, string text2); //UpdatePowerInfo
 		private delegate void SafeCallDelegate2( DeviceStatus status); //UpdateDeviceStatus
+		private delegate void SafeCallDelegate3( bool set ); //Set Error Provider, true - set, false - reset
 
 		//Threads:
-		private Thread thread_watch_power = null;
+		//private Thread thread_watch_power = null;
 		private Thread thread_search_for_device = null;
+
+		//Timers:
+		private System.Timers.Timer timer_watch_power;
 
 		//Forms:
 		private WifiProfiles form_wifi_profiles;
@@ -45,32 +50,23 @@ namespace BatteryPerserve
 		//For Encryption/Decryption:
 		public EncDec_Resources encdec_resources;
 
-		//Device:
+		//Misc & Device:
 		private byte relay_status; //State of the relay: 0x01 - Open, 0x02 - Close
 		private DeviceStatus device_status;
 		private string wifi_profile_sent;
+		private bool watch_power;
+		private bool allow_search;
+
 
 		//Battery/Power:
 		private PowerStatus bp_power_info;
 
-		private bool watch_power;
 
 
 		//Class Functions ---------------------------------------------------------------------
 		public BatteryOptimizer()
 		{
 			InitializeComponent();
-			SystemEvents.PowerModeChanged += OnPowerChange;
-
-
-			//Check if first time ever running program
-			RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
-			if (key1 == null /*|| key1.GetValue("FirstEverRun") == null*/)
-				InitializeRegistry();
-			else
-				key1.Close();
-
-			InitialRegistryCheck(); //Check Settings in Registry
 
 			//UDP
 			UDP_Initialize_Client();
@@ -90,12 +86,12 @@ namespace BatteryPerserve
 			field_types[3] = FieldType.BYTE2_VAR_SIZE;
 			field_types[4] = FieldType.BYTE4;
 			field_types[5] = FieldType.BYTE1_CHECKSUM;
-			packet_collector = new Collector(	packet_manager.prefix,
+			packet_collector = new Collector( packet_manager.prefix,
 												packet_manager.prefix_cs,
 												0,
 												field_types,
 												field_types_size,
-												4);
+												4 );
 
 			//Encryption/Decryption:
 			encdec_resources = new EncDec_Resources();
@@ -112,16 +108,34 @@ namespace BatteryPerserve
 			relay_status = 0x01;
 			wifi_profile_sent = "";
 
-			//Power watch:
-			watch_power = true;
 
-			//Start Threads:
-			thread_watch_power = new Thread( PowerWatch );
-			thread_watch_power.Start();
+			//Events/Timers:
+			SystemEvents.PowerModeChanged += OnPowerChange;
+			//Timers:
+			timer_watch_power = new System.Timers.Timer();
+			timer_watch_power.Interval = 30000;
+			timer_watch_power.Elapsed += PowerWatch_Event;
+			timer_watch_power.Enabled = true;
+
+			//Misc:
+			watch_power = true;
+			allow_search = true;
+
+
+			//Check if first time ever running program:
+			RegistryKey key1 = Registry.CurrentUser.OpenSubKey("SOFTWARE\\BatteryOptimizer");
+			if (key1 == null /*|| key1.GetValue("FirstEverRun") == null*/)
+				InitializeRegistry();
+			else
+				key1.Close();
+
+			//Check Settings in Registry:
+			InitialRegistryCheck();
+
 		} //END Constructor
 
 
-		//Registry functions
+		//Registry functions::::::::::::::::::::::::::::::::::::::
 		private void InitialRegistryCheck()
 		{
 			//Start Program at Boot
@@ -141,7 +155,13 @@ namespace BatteryPerserve
 
 			//Auto Connect & Start Optimizing
 			if (BatOpSettings.auto_connect == true)
-				Program_Settings.SetItemChecked(1, true);
+			{
+				Program_Settings.SetItemChecked( 1, true );
+
+				button_search_for_device_Click();
+				button_OptmizeBattery_Click();
+			}
+
 
 			//Start Minimized
 			if (BatOpSettings.start_minimized == true)
@@ -220,52 +240,74 @@ namespace BatteryPerserve
 		} //END RetrieveSettings
 
 
-
-
-
-
-		private void SearchForDevice()
+		//Main Functions::::::::::::::::::::::::::::::::::::::
+		private void SearchForDevice(Object stateinfo)
 		{
-			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-			DeviceStatus temp_status = BatOpSettings.device_satus;
-			UpdateDeviceStatus( DeviceStatus.SEARCHING );
-			UInt32 timer = 0;
-
-			while (	DeviceStatus.NO_DEVICE == temp_status &&
-					timer <= 25000)
+			if (true == allow_search)
 			{
-				UDP_SendToClient( packet_manager.msg_type_wifi );
-				Thread.Sleep( 5000 );
-				timer += 5000;
-				if (DeviceStatus.SEARCHING != device_status)
+				SetErrorProvider_DeviceStatus( false );
+				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+				DeviceStatus temp_status = BatOpSettings.device_satus;
+				UpdateDeviceStatus( DeviceStatus.SEARCHING );
+				UInt32 timer = 0;
+
+				while (true == allow_search &&
+						DeviceStatus.NO_DEVICE == temp_status &&
+						timer <= 50000)
 				{
-					temp_status = device_status;
+					UDP_SendToClient( packet_manager.msg_type_wifi );
+					Thread.Sleep( 10000 );
+					timer += 10000;
+					if (DeviceStatus.SEARCHING != device_status)
+					{
+						temp_status = device_status;
+					}
+				}
+
+				if (true == allow_search)
+				{
+					timer = 0;
+					BatOpSettings = RetrieveSettings();
+					temp_status = BatOpSettings.device_satus;
+					UpdateDeviceStatus( DeviceStatus.SEARCHING );
+
+					while (DeviceStatus.FOUND == temp_status && timer <= 50000)
+					{
+						UDP_SendToClient( packet_manager.msg_type_status );
+						Thread.Sleep( 10000 );
+						timer += 10000;
+						if (DeviceStatus.SEARCHING != device_status)
+						{
+							temp_status = device_status;
+						}
+					}
+
+					if (DeviceStatus.CONNECTED != device_status)
+					{
+						UpdateDeviceStatus( temp_status );
+						if (BatOpSettings.auto_connect == true)
+							SetErrorProvider_DeviceStatus( true );
+					}
 				}
 			}
-
-			timer = 0;
-			BatOpSettings = RetrieveSettings();
-			temp_status = BatOpSettings.device_satus;
-			UpdateDeviceStatus( DeviceStatus.SEARCHING );
-
-			while (DeviceStatus.FOUND == temp_status && timer <= 25000)
-			{
-				UDP_SendToClient( packet_manager.msg_type_status );
-				Thread.Sleep( 5000 );
-				timer += 5000;
-				if (DeviceStatus.SEARCHING != device_status)
-				{
-					temp_status = device_status;
-				}
-			}
-
-			if (DeviceStatus.CONNECTED != device_status)
-			{
-				UpdateDeviceStatus( temp_status );
-			}
-
 
 		} //END Find_Device
+
+		private void SetErrorProvider_DeviceStatus( bool set )
+		{
+			if (textBox_device_status.InvokeRequired)
+			{
+				var d = new SafeCallDelegate3( SetErrorProvider_DeviceStatus );
+				Invoke( d, new object[] { set } );
+			}
+			else
+			{
+				if (true == set)
+					errorProvider_device_status.SetError( textBox_device_status, "Could not auto connect!" );
+				else
+					errorProvider_device_status.SetError( textBox_device_status, String.Empty );
+			}
+		} //END SetErrorProvider_DeviceStatus
 
 
 		private void UpdateDeviceStatus( DeviceStatus status )
@@ -277,13 +319,13 @@ namespace BatteryPerserve
 			}
 			else
 			{
+				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 				device_status = status;
 
 				if (DeviceStatus.NO_DEVICE == status)
 				{
 					textBox_device_status.Text = "No Device";
 					//Save Status:
-					Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 					BatOpSettings.device_satus = status;
 					SaveSettings( BatOpSettings );
 					button_search_for_device.Enabled = true;
@@ -298,7 +340,6 @@ namespace BatteryPerserve
 				{
 					textBox_device_status.Text = "Device info Stored";
 					//Save Status:
-					Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 					BatOpSettings.device_satus = status;
 					SaveSettings( BatOpSettings );
 					if (null != wifi_profile_sent && "" != wifi_profile_sent)
@@ -322,6 +363,19 @@ namespace BatteryPerserve
 					textBox_device_status.Text = "Connected";
 					button_search_for_device.Enabled = false;
 				}
+				else if (DeviceStatus.LOST_CONNECTION == status)
+				{
+					textBox_device_status.Text = "Lost Connection";
+					button_search_for_device.Enabled = true;
+					button_search_for_device.Text = "Connect to Device";
+					latest_packet_sent = "";
+					//Auto Connect & Start Optimizing
+					if (BatOpSettings.auto_connect == true)
+					{
+						button_search_for_device_Click();
+					}
+
+				}
 
 
 			}
@@ -336,10 +390,22 @@ namespace BatteryPerserve
 			switch (e.Mode)
 			{
 				case PowerModes.Resume:
-					//Closes the port upon laptop waking up, so that the port can be reopened
+					Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+					watch_power = true;
+					allow_search = true;
+					//Auto Connect & Start Optimizing
+					if (BatOpSettings.auto_connect == true)
+					{
+						button_search_for_device_Click();
+					}
 					break;
 				case PowerModes.Suspend:
+					watch_power = false;
+					allow_search = false;
+					if (DeviceStatus.CONNECTED == device_status)
+						UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
 					break;
+
 			}
 		} //END OnPowerChange
 
@@ -381,19 +447,29 @@ namespace BatteryPerserve
 		} //END CheckOptimizationSchedule
 
 
+		private void PowerWatch_Event( Object source, System.Timers.ElapsedEventArgs e )
+		{
+			if (true == watch_power)
+			{
+				PowerWatch();
+			}
+
+		} //END PowerWatch_Event
+
+
 		private void PowerWatch()
 		{
-			while (true == watch_power) //While true
+			//Update Battery Info
+			bp_power_info = SystemInformation.PowerStatus; //Get Power Status
+
+			if (bp_power_info.PowerLineStatus.ToString() == "Online")
+				UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Charging");
+			else
+				UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging");
+
+
+			if (device_status == DeviceStatus.CONNECTED)
 			{
-				//Update Battery Info
-				bp_power_info = SystemInformation.PowerStatus; //Get Power Status
-
-				if (bp_power_info.PowerLineStatus.ToString() == "Online")
-					UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Charging");
-				else
-					UpdatePowerInfo((bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging");
-
-
 				//Check if able to optimize battery
 				if (button_OptmizeBattery.Text == "ON")
 				{
@@ -402,30 +478,41 @@ namespace BatteryPerserve
 					{
 						if (bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100)
 						{ //combine if stmt's
-							if (bp_power_info.PowerLineStatus.ToString() == "Online") //Start charging
-							{
-								relay_status = 0x01;
-							}
-
-						}
-						else if (bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100) //Stop charging
-						{
-							if (bp_power_info.PowerLineStatus.ToString() == "Offline")
+							if (bp_power_info.PowerLineStatus.ToString() == "Online") //Stop charging
 							{
 								relay_status = 0x02;
 							}
 
 						}
+						else if (bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100) //Start charging
+						{
+							if (bp_power_info.PowerLineStatus.ToString() == "Offline")
+							{
+								relay_status = 0x01;
+							}
+
+						}
 
 					} //END Check Charge times
-					else
-						relay_status = 0x02;
+
 
 					UDP_SendToClient( packet_manager.msg_type_relay );
 				} //END Checking Optimizaion active
-				Thread.Sleep(10000);
-			}//END Loop
+				//else
+				//{
+				//	//Turn relay back on
+				//	relay_status = 0x01;
+				//	UDP_SendToClient( packet_manager.msg_type_relay );
+				//}
 
+				Thread.Sleep( 1000 ); //Give some time for response packet to be received
+
+				if (latest_packet_sent != "") //Didn't receive response packet, lost connection
+				{
+					UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
+				}
+
+			}
 
 		} //END PowerWatch
 
@@ -466,17 +553,7 @@ namespace BatteryPerserve
 
 		private void button_OptmizeBattery_Click(object sender, EventArgs e)
 		{
-			if (button_OptmizeBattery.Text == "OFF")
-			{
-				button_OptmizeBattery.Text = "ON";
-				button_OptmizeBattery.BackColor = System.Drawing.Color.Lime;
-			}
-			else
-			{
-				button_OptmizeBattery.Text = "OFF";
-				button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-				//clear pin
-			}
+			button_OptmizeBattery_Click();
 		} //END Optimize Battery
 
 
@@ -491,7 +568,9 @@ namespace BatteryPerserve
 			{
 				button_OptmizeBattery.Text = "OFF";
 				button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-				//clear pin
+				//Turn relay back on
+				relay_status = 0x01;
+				UDP_SendToClient( packet_manager.msg_type_relay );
 			}
 		} //END Optimize Battery
 
@@ -611,12 +690,16 @@ namespace BatteryPerserve
 
 		private void button_search_for_device_Click( object sender, EventArgs e )
 		{
+			button_search_for_device_Click();
+		} //END button_search_for_device_Click
+
+		private void button_search_for_device_Click() //For Simulating click
+		{
 			if (DeviceStatus.CONNECTED != device_status)
 			{
-				thread_search_for_device = new Thread( SearchForDevice );
-				thread_search_for_device.Start();
+				allow_search = true;
+				ThreadPool.QueueUserWorkItem( SearchForDevice );
 			}
-
 
 		} //END button_search_for_device_Click
 
@@ -624,6 +707,7 @@ namespace BatteryPerserve
 		private void button_restore_no_device_Click( object sender, EventArgs e )
 		{
 			UpdateDeviceStatus( DeviceStatus.NO_DEVICE );
+			allow_search = false;
 		} //END button_restore_no_device_Click
 
 
@@ -631,11 +715,6 @@ namespace BatteryPerserve
 		{
 			//Set Thread bools to false:
 			watch_power = false;
-
-			if (null != thread_watch_power && true == thread_watch_power.IsAlive)
-			{
-				thread_watch_power.Join();
-			}
 
 			if (null != thread_search_for_device && true == thread_search_for_device.IsAlive)
 			{

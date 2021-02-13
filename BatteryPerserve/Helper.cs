@@ -40,6 +40,7 @@ namespace BatteryPerserve
 		SEARCHING,
 		FOUND,
 		CONNECTED,
+		LOST_CONNECTION
 	};
 
 

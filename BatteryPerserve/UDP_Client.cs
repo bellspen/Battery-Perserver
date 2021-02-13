@@ -24,13 +24,14 @@ namespace BatteryPerserve
 
 		private void UDP_Initialize_Client()
 		{
-			//Start UDP server to listen in for the Battery Opetimizer device:
+			//Start UDP server to listen in for the Battery Optimizer device:
 			udp_client = new UdpClient( rec_listenPort );
 			rec_end_point = new IPEndPoint( IPAddress.Broadcast, rec_listenPort );
 			send_end_point = new IPEndPoint( IPAddress.Broadcast, send_listenPort );
 
 			udp_client.EnableBroadcast = true;
 			udp_client.MulticastLoopback = false;
+			latest_packet_sent = "";
 		}
 
 		private void UDP_ReceiveContinuously( IAsyncResult res )
@@ -62,6 +63,10 @@ namespace BatteryPerserve
 
 			if (msg_type == packet_manager.msg_type_relay)
 			{
+				if (0x01 == command[0] || 0x02 == command[0])
+				{
+					relay_status = command[0];
+				}
 
 			}
 			else if (msg_type == packet_manager.msg_type_wifi)
@@ -93,7 +98,7 @@ namespace BatteryPerserve
 						UpdateDeviceStatus( DeviceStatus.CONNECTED );
 					}
 
-
+					latest_packet_sent = "";
 				}
 
 
@@ -126,21 +131,10 @@ namespace BatteryPerserve
 						byte[] ass_data;
 						byte[] decrypted_data;
 
-						if (msg_type == packet_manager.msg_type_relay)
-						{
 
-						}
-						else if (msg_type == packet_manager.msg_type_wifi)
+						if (msg_type >= 0 && msg_type <= 9)
 						{
-
-						}
-						else if (msg_type == packet_manager.msg_type_name)
-						{
-
-
-						}
-						else if (msg_type == packet_manager.msg_type_response)
-						{
+							//Process data:
 							for (int x = 0; x < encdec_resources.gcm256.IVByteSize; x++)
 								iv[x] = (byte)packet_collector.fields[2].array_field[x];
 
@@ -150,21 +144,19 @@ namespace BatteryPerserve
 							for (int x = 0; x < (int)packet_collector.fields[3].ui64_field; x++)
 								enc_data_mac[x] = (byte)packet_collector.fields[3].array_field[x];
 
-							ass_data = Encoding.UTF8.GetBytes( encdec_resources.associated_data[packet_manager.msg_type_response] );
+							ass_data = Encoding.UTF8.GetBytes( encdec_resources.associated_data[msg_type] );
 
-							decrypted_data = encdec_resources.gcm256.Decrypt(	enc_data_mac,
+							decrypted_data = encdec_resources.gcm256.Decrypt( enc_data_mac,
 																				encdec_resources.aes_key,
 																				iv,
 																				ass_data );
 
+							//Execute Command:
 							if (null != decrypted_data)
 							{
 								UDP_ExecuteCommand( msg_type, ref decrypted_data );
 							}
-
-
 						}
-						//END Msg types
 
 
 					} //END PARSED
@@ -205,7 +197,7 @@ namespace BatteryPerserve
 
 
 				if (null != wifi_profile &&
-					0 != wifi_profile.Count &&
+					2 == wifi_profile.Count &&
 					null != wifi_profile[0] &&
 					null != wifi_profile[1] &&
 					"" != wifi_profile[0] &&

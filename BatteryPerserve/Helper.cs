@@ -24,6 +24,7 @@ namespace BatteryPerserve
 		//Device information:
 		public string	device_name;
 		public DeviceStatus device_satus;
+		public byte[]	device_id;
 	}
 
 	public struct EncDec_Resources

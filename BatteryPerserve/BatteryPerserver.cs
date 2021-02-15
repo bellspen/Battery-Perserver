@@ -40,7 +40,7 @@ namespace BatteryPerserve
 		private WifiProfiles form_wifi_profiles;
 
 		//Packets:
-		private BP_Packets packet_manager;
+		private BO_Packets packet_manager;
 
 		//Collector:
 		private FieldType[] field_types;
@@ -76,7 +76,7 @@ namespace BatteryPerserve
 			form_wifi_profiles = new WifiProfiles();
 
 			//Packet manager:
-			packet_manager = new BP_Packets();
+			packet_manager = new BO_Packets();
 
 			//Collector:
 			field_types = new FieldType[field_types_size];
@@ -146,7 +146,7 @@ namespace BatteryPerserve
 
 			//Rest of Settings
 			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-			if (BatOpSettings.battery_range_max == 0)
+			if (null == BatOpSettings.device_id || 0 == BatOpSettings.battery_range_max)
 			{
 				InitializeRegistry();
 				BatOpSettings = RetrieveSettings();
@@ -200,7 +200,8 @@ namespace BatteryPerserve
 				battery_range_min = BatteryMin.Value,
 				battery_range_max = BatteryMax.Value,
 				device_name = "",
-				device_satus = DeviceStatus.NO_DEVICE
+				device_satus = DeviceStatus.NO_DEVICE,
+				device_id = encdec_resources.gcm256.NewIv()
 			};
 
 			RegistryKey key1 = Registry.CurrentUser.CreateSubKey("SOFTWARE\\BatteryOptimizer");

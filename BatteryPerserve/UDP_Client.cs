@@ -12,7 +12,7 @@ namespace BatteryPerserve
 	partial class BatteryOptimizer
 	{
 		//UDP:
-		private bool run_udp_loop;
+		//private bool run_udp_loop;
 		private const int rec_listenPort = 8011;
 		private const int send_listenPort = 8010;
 		private UdpClient udp_client;
@@ -26,11 +26,13 @@ namespace BatteryPerserve
 		{
 			//Start UDP server to listen in for the Battery Optimizer device:
 			udp_client = new UdpClient( rec_listenPort );
-			rec_end_point = new IPEndPoint( IPAddress.Broadcast, rec_listenPort );
-			send_end_point = new IPEndPoint( IPAddress.Broadcast, send_listenPort );
+			rec_end_point = new IPEndPoint( IPAddress.Any, rec_listenPort );
+			send_end_point = new IPEndPoint( IPAddress.Parse("239.5.6.7"), send_listenPort );
 
-			udp_client.EnableBroadcast = true;
-			udp_client.MulticastLoopback = false;
+			//udp_client.EnableBroadcast = true;
+			//udp_client.JoinMulticastGroup( IPAddress.Parse( "239.5.6.7"), IPAddress.Any);
+			//udp_client.MulticastLoopback = true;
+
 			latest_packet_sent = "";
 		}
 
@@ -168,10 +170,6 @@ namespace BatteryPerserve
 		} //END UDP_ProcessData
 
 
-
-
-
-
 		/*
 		 * 0x00 Relay
 		 * 0x01 Wifi
@@ -180,11 +178,14 @@ namespace BatteryPerserve
 		 */
 		private void UDP_SendToClient(byte msg_type)
 		{
+			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
 			if (msg_type == packet_manager.msg_type_relay)
 			{
 				//Encrypt:
-				byte[] relay_packet = packet_manager.BuildRelayPacket( relay_status, ref encdec_resources );
+				byte[] relay_packet = packet_manager.BuildRelayPacket(	BatOpSettings.device_id,
+																		relay_status,
+																		ref encdec_resources );
 				udp_client.Send( relay_packet, relay_packet.Length, send_end_point );
 
 			}
@@ -208,7 +209,8 @@ namespace BatteryPerserve
 					wifi_profile_sent = wifi_profile[0];
 
 					//Create packet & Encrypt:
-					byte[] wifi_packet = packet_manager.BuildWifiPacket(	wifi_profile[0],
+					byte[] wifi_packet = packet_manager.BuildWifiPacket(	BatOpSettings.device_id,
+																			wifi_profile[0],
 																			wifi_profile[1],
 																			ref encdec_resources );
 					//Send Packet
@@ -229,7 +231,8 @@ namespace BatteryPerserve
 			}
 			else if (msg_type == packet_manager.msg_type_status)
 			{
-				byte[] packet = packet_manager.BuildStatusPacket(	device_status,
+				byte[] packet = packet_manager.BuildStatusPacket(	BatOpSettings.device_id,
+																	device_status,
 																	ref encdec_resources );
 				udp_client.Send( packet, packet.Length, send_end_point );
 			}

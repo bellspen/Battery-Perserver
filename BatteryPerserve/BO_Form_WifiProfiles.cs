@@ -11,13 +11,13 @@ using System.Management.Automation;
 
 namespace BatteryPerserve
 {
-	public partial class WifiProfiles : Form
+	public partial class BO_Form_WiFiProfiles : Form
 	{
 		private PowerShell wp_collect_all_wifi_profiles;
 		private PowerShell wp_collect_wifi_profile;
 		public List<string> wp_profile { get; set; }
 
-		public WifiProfiles()
+		public BO_Form_WiFiProfiles()
 		{
 			InitializeComponent();
 

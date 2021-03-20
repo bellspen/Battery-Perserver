@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.572
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FirstTest", "FirstTest.csproj", "{6EA46FD2-1A40-4BB5-8EA0-B57F01A8BE25}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryOptimizer", "BatteryOptimizer.csproj", "{6D3E72EC-CB1C-4D5A-BCBF-5BBF0C316E84}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6EA46FD2-1A40-4BB5-8EA0-B57F01A8BE25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6EA46FD2-1A40-4BB5-8EA0-B57F01A8BE25}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6EA46FD2-1A40-4BB5-8EA0-B57F01A8BE25}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6EA46FD2-1A40-4BB5-8EA0-B57F01A8BE25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D3E72EC-CB1C-4D5A-BCBF-5BBF0C316E84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D3E72EC-CB1C-4D5A-BCBF-5BBF0C316E84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D3E72EC-CB1C-4D5A-BCBF-5BBF0C316E84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D3E72EC-CB1C-4D5A-BCBF-5BBF0C316E84}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {CFB2748A-3303-42B0-8979-D51025DDCA58}
+		SolutionGuid = {68B62FD5-747A-4F6E-82B2-3127D3487B94}
 	EndGlobalSection
 EndGlobal

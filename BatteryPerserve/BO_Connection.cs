@@ -9,41 +9,53 @@ using System.Net.Sockets;
 
 namespace BatteryPerserve
 {
-	partial class BatteryOptimizer
+	public partial class BatteryOptimizer
 	{
-		//UDP:
-		//private bool run_udp_loop;
-		private const int rec_listenPort = 8011;
-		private const int send_listenPort = 8010;
-		private UdpClient udp_client;
-		private IPEndPoint rec_end_point;
-		private IPEndPoint send_end_point;
+		public struct BO_Connection
+		{
+			//UDP:
+			//private bool run_udp_loop;
+			public const int rec_listenPort = 8011;
+			public const int send_listenPort = 8010;
+			public UdpClient udp_client;
+			public IPEndPoint rec_end_point;
+			public IPEndPoint send_end_point;
 
-		//Packets:
-		private string latest_packet_sent;
+			//Packets:
+			public string latest_packet_sent;
 
-		private void UDP_Initialize_Client()
+			//Flags:
+			public bool received_response;
+		}
+
+		BO_Connection bo_connection;
+
+
+		private void BO_Connection_Initialize()
 		{
 			//Start UDP server to listen in for the Battery Optimizer device:
-			udp_client = new UdpClient( rec_listenPort );
-			rec_end_point = new IPEndPoint( IPAddress.Any, rec_listenPort );
-			send_end_point = new IPEndPoint( IPAddress.Parse("239.5.6.7"), send_listenPort );
+			bo_connection.udp_client = new UdpClient( BO_Connection.rec_listenPort );
+			bo_connection.rec_end_point = new IPEndPoint(	IPAddress.Any,
+															BO_Connection.rec_listenPort );
+			bo_connection.send_end_point = new IPEndPoint(	IPAddress.Parse("239.5.6.7"),
+															BO_Connection.send_listenPort );
 
 			//udp_client.EnableBroadcast = true;
 			//udp_client.JoinMulticastGroup( IPAddress.Parse( "239.5.6.7"), IPAddress.Any);
 			//udp_client.MulticastLoopback = true;
 
-			latest_packet_sent = "";
+			bo_connection.latest_packet_sent = "";
+			bo_connection.received_response = false;
 		}
 
 		private void UDP_ReceiveContinuously( IAsyncResult res )
 		{
-			byte[] received = udp_client.EndReceive( res, ref rec_end_point );
+			byte[] received = bo_connection.udp_client.EndReceive( res, ref bo_connection.rec_end_point );
 
 			//Process Data:
 			UDP_ProcessData( ref received );
 
-
+			//Set up to receive again:
 			UDP_SetupReceive();
 		} //END UDP_ReceiveContinuously
 
@@ -51,7 +63,7 @@ namespace BatteryPerserve
 		{
 			try
 			{
-				udp_client.BeginReceive( new AsyncCallback( UDP_ReceiveContinuously ), null );
+				bo_connection.udp_client.BeginReceive( new AsyncCallback( UDP_ReceiveContinuously ), null );
 			}
 			catch (Exception e)
 			{
@@ -86,7 +98,7 @@ namespace BatteryPerserve
 				string temp2 = temp.Trim();
 
 
-				if (temp2 == latest_packet_sent)
+				if (temp2 == bo_connection.latest_packet_sent)
 				{
 
 					//MessageBox.Show( "Success!!!" );
@@ -100,13 +112,12 @@ namespace BatteryPerserve
 						UpdateDeviceStatus( DeviceStatus.CONNECTED );
 					}
 
-					latest_packet_sent = "";
+					bo_connection.latest_packet_sent = "";
+					bo_connection.received_response = true;
 				}
 
 
 			}
-
-
 
 		} //END UDP_ExecuteCommand
 
@@ -179,15 +190,14 @@ namespace BatteryPerserve
 		private void UDP_SendToClient(byte msg_type)
 		{
 			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+			byte[] packet = null;
 
 			if (msg_type == packet_manager.msg_type_relay)
 			{
 				//Encrypt:
-				byte[] relay_packet = packet_manager.BuildRelayPacket(	BatOpSettings.device_id,
-																		relay_status,
-																		ref encdec_resources );
-				udp_client.Send( relay_packet, relay_packet.Length, send_end_point );
-
+				packet = packet_manager.BuildRelayPacket(	BatOpSettings.device_id,
+															relay_status,
+															ref encdec_resources );
 			}
 			else if (msg_type == packet_manager.msg_type_wifi)
 			{
@@ -204,45 +214,44 @@ namespace BatteryPerserve
 					"" != wifi_profile[0] &&
 					"" != wifi_profile[1])
 				{
-
 					//Set WiFi sent, so we know what WiFi to switch back to
 					wifi_profile_sent = wifi_profile[0];
 
 					//Create packet & Encrypt:
-					byte[] wifi_packet = packet_manager.BuildWifiPacket(	BatOpSettings.device_id,
-																			wifi_profile[0],
-																			wifi_profile[1],
-																			ref encdec_resources );
-					//Send Packet
-					udp_client.Send( wifi_packet, wifi_packet.Length, send_end_point );
+					packet = packet_manager.BuildWifiPacket(BatOpSettings.device_id,
+															wifi_profile[0],
+															wifi_profile[1],
+															ref encdec_resources );
 				}
-
-
 			}
 			else if (msg_type == packet_manager.msg_type_name)
 			{
-
 
 			}
 			else if (msg_type == packet_manager.msg_type_response)
 			{
 
-
 			}
 			else if (msg_type == packet_manager.msg_type_status)
 			{
-				byte[] packet = packet_manager.BuildStatusPacket(	BatOpSettings.device_id,
-																	device_status,
-																	ref encdec_resources );
-				udp_client.Send( packet, packet.Length, send_end_point );
+				packet = packet_manager.BuildStatusPacket(	BatOpSettings.device_id,
+															device_status,
+															ref encdec_resources );
 			}
 
-			//Set latest packet sent:
-			latest_packet_sent = encdec_resources.associated_data[msg_type];
+
+			//Send Packet:
+			if (packet != null)
+			{
+				bo_connection.udp_client.Send( packet, packet.Length, bo_connection.send_end_point );
+				//Set latest packet sent:
+				bo_connection.latest_packet_sent = encdec_resources.associated_data[msg_type];
+			}
+
 		} //END UDP_ClientLoop
 
 
 
 
-	}
+	} //END class
 }

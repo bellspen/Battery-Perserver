@@ -1,6 +1,6 @@
 ﻿namespace BatteryPerserve
 {
-    partial class WifiProfiles
+    partial class BO_Form_WiFiProfiles
     {
         /// <summary>
         /// Required designer variable.
@@ -85,7 +85,7 @@
 			this.textBox1.TabIndex = 3;
 			this.textBox1.Text = "Make sure you are connected to the Battery Optimizer\'s Acess Point.";
 			// 
-			// WifiProfiles
+			// BO_Form_WiFiProfiles
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;

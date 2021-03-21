@@ -246,6 +246,7 @@ namespace BatteryPerserve
 				bo_connection.udp_client.Send( packet, packet.Length, bo_connection.send_end_point );
 				//Set latest packet sent:
 				bo_connection.latest_packet_sent = encdec_resources.associated_data[msg_type];
+				bo_connection.received_response = false;
 			}
 
 		} //END UDP_ClientLoop

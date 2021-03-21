@@ -47,6 +47,27 @@ namespace BatteryPerserve
 		LOST_CONNECTION
 	};
 
+	public enum ProgramSettingsCheckbox
+	{
+		StartProgramBoot = 0,
+		AutoConnectStartOptim,
+		StartMinimized
+	};
+
+	public enum WaitPeriods
+	{
+		TimeOut = 50000,
+		WiFiWait = 10000,
+		StatusWait = 2000
+	};
+
+	public enum DeviceRelay
+	{
+		Relay_ON = 0x01,
+		Relay_OFF = 0x02
+	};
+
+
 	//BO_Core::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 	public partial class BatteryOptimizer
 	{
@@ -58,12 +79,14 @@ namespace BatteryPerserve
 		private delegate void SafeCallDelegate3( bool set ); //Set Error Provider, true - set, false - reset
 
 		//Threads:
-		//private Thread thread_watch_power = null;
 		private Thread thread_search_for_device = null;
 
 		//Timers:
 		private System.Timers.Timer timer_watch_power;
 		private System.Timers.Timer timer_watch_connection;
+
+		//Mutex's:
+		private Mutex mutex_bo_device;
 
 		//Forms:
 		private BO_Form_WiFiProfiles form_wifi_profiles;
@@ -147,12 +170,15 @@ namespace BatteryPerserve
 			timer_watch_connection = new System.Timers.Timer();
 			timer_watch_connection.Interval = 5000;
 			timer_watch_connection.Elapsed += WatchConnection_Event;
-			timer_watch_connection.Enabled = true; //Change!!!!???
+
+			//Mutex's:
+			mutex_bo_device = new Mutex();
 
 
 			//Misc:
 			watch_power = true;
 			allow_search = true;
+			CheckPowerStatus();
 
 
 			//Check if first time ever running program:
@@ -171,13 +197,13 @@ namespace BatteryPerserve
 		//Registry functions>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 		private void InitialRegistryCheck()
 		{
-			//Start Program at Boot
+			//Start Program at Boot:
 			RegistryKey key1 = Registry.CurrentUser.OpenSubKey( "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" );
 			if (key1.GetValue( "BatteryOptimizer" ) != null)
 				Program_Settings.SetItemChecked( 0, true );
 			key1.Close();
 
-			//Rest of Settings
+			//Rest of Settings:
 			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 			if (null == BatOpSettings.device_id || 0 == BatOpSettings.battery_range_max)
 			{
@@ -185,7 +211,7 @@ namespace BatteryPerserve
 				BatOpSettings = RetrieveSettings();
 			}
 
-			//Auto Connect & Start Optimizing
+			//Auto Connect & Start Optimizing:
 			if (BatOpSettings.auto_connect == true)
 			{
 				Program_Settings.SetItemChecked( 1, true );
@@ -194,22 +220,22 @@ namespace BatteryPerserve
 				button_OptmizeBattery_Click();
 			}
 
-			//Start Minimized
+			//Start Minimized:
 			if (BatOpSettings.start_minimized == true)
 			{
 				Program_Settings.SetItemChecked( 2, true );
 				this.WindowState = FormWindowState.Minimized;
 			}
 
-			//Optimize Charge Schedule
+			//Optimize Charge Schedule:
 			if (BatOpSettings.optimize_schedule == true)
 				checkBox_OptimizeChargeTime.Checked = true;
 
-			//Charge Start Stop times
+			//Charge Start Stop times:
 			Battery_OptimizeChargeTime.Value = BatOpSettings.start_charge_time;
 			Battery_NormalChargeTime.Value = BatOpSettings.stop_charge_time;
 
-			//Optimal Battery Range
+			//Optimal Battery Range:
 			BatteryMin.Value = BatOpSettings.battery_range_min;
 			BatteryMax.Value = BatOpSettings.battery_range_max;
 
@@ -301,17 +327,21 @@ namespace BatteryPerserve
 
 		private void CheckConnection()
 		{
-			//Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-			//DeviceStatus temp_status = BatOpSettings.device_satus;
+			mutex_bo_device.WaitOne();
 
 			UDP_SendToClient( packet_manager.msg_type_status );
 
-			Thread.Sleep( 2000 );
+			Thread.Sleep( (int)WaitPeriods.StatusWait );
 
 			if (bo_connection.received_response == false) //Didn't receive response packet, lost connection.
 			{
 				UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
 			}
+
+			//Check power status well were at it:
+			CheckPowerStatus();
+
+			mutex_bo_device.ReleaseMutex();
 
 		} //END CheckConnection
 
@@ -320,53 +350,56 @@ namespace BatteryPerserve
 		{
 			if (true == allow_search)
 			{
-				SetErrorProvider_DeviceStatus( false );
-				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-				DeviceStatus temp_status = BatOpSettings.device_satus;
-				UpdateDeviceStatus( DeviceStatus.SEARCHING );
 				UInt32 timer = 0;
+				DeviceStatus temp_status = device_status;
 
-				while (true == allow_search &&
+				SetErrorProvider_DeviceStatus( false );
+
+				//Initial Connection, Send WiFi info:
+				while (	true == allow_search &&
 						DeviceStatus.NO_DEVICE == temp_status &&
-						timer <= 50000)
+						timer <= (UInt32)WaitPeriods.TimeOut)
 				{
-					UDP_SendToClient( packet_manager.msg_type_wifi );
-					Thread.Sleep( 10000 );
-					timer += 10000;
-					if (DeviceStatus.SEARCHING != device_status)
-					{
-						temp_status = device_status;
-					}
-				}
-
-				if (true == allow_search)
-				{
-					timer = 0;
-					BatOpSettings = RetrieveSettings();
-					temp_status = BatOpSettings.device_satus;
 					UpdateDeviceStatus( DeviceStatus.SEARCHING );
 
-					while (DeviceStatus.FOUND == temp_status && timer <= 50000)
-					{
-						UDP_SendToClient( packet_manager.msg_type_status );
-						Thread.Sleep( 10000 );
-						timer += 10000;
-						if (DeviceStatus.SEARCHING != device_status)
-						{
-							temp_status = device_status;
-						}
-					}
+					UDP_SendToClient( packet_manager.msg_type_wifi );
+					Thread.Sleep( (int)WaitPeriods.WiFiWait );
+					temp_status = device_status;
 
-					if (DeviceStatus.CONNECTED != device_status)
-					{
-						UpdateDeviceStatus( temp_status );
-						if (BatOpSettings.auto_connect == true)
-							SetErrorProvider_DeviceStatus( true );
-					}
+					timer += (UInt32)WaitPeriods.WiFiWait;
+				}
+
+				timer = 0;
+				temp_status = device_status;
+
+				//Establish connection with device:
+				while (	true == allow_search &&
+						DeviceStatus.CONNECTED != temp_status &&
+						timer <= (UInt32)WaitPeriods.TimeOut)
+				{
+					UpdateDeviceStatus( DeviceStatus.SEARCHING );
+					CheckConnection();
+					temp_status = device_status;
+
+					timer += (UInt32)WaitPeriods.StatusWait;
+				}
+
+
+				//Set flags:
+				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+
+				if (DeviceStatus.CONNECTED != device_status)
+				{
+					if (BatOpSettings.auto_connect == true)
+						SetErrorProvider_DeviceStatus( true );
+				}
+				else if (DeviceStatus.CONNECTED == device_status)
+				{
+					timer_watch_connection.Enabled = true;
 				}
 			}
 
-		} //END Find_Device
+		} //END SearchForDevice
 
 
 		private void UpdateDeviceStatus( DeviceStatus status )
@@ -463,36 +496,6 @@ namespace BatteryPerserve
 
 
 		//Power Functions>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-		private void OnPowerChange( object s, PowerModeChangedEventArgs e )
-		{
-			switch (e.Mode)
-			{
-				case PowerModes.Resume:
-				{
-					Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-					watch_power = true;
-					allow_search = true;
-					//Auto Connect & Start Optimizing
-					if (BatOpSettings.auto_connect == true)
-					{
-						button_search_for_device_Click();
-					}
-					break;
-				}
-				case PowerModes.Suspend:
-				{
-					watch_power = false;
-					allow_search = false;
-					if (DeviceStatus.CONNECTED == device_status)
-						UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
-					break;
-				}
-
-
-			}
-		} //END OnPowerChange
-
-
 		private void UpdatePowerStatus( string percent, string charge_status )
 		{
 			if (Battery_Percentage.InvokeRequired || Battery_LineStatus.InvokeRequired)
@@ -515,9 +518,16 @@ namespace BatteryPerserve
 			bp_power_info = SystemInformation.PowerStatus; //Get Power Status
 
 			if (bp_power_info.PowerLineStatus.ToString() == "Online")
+			{
 				UpdatePowerStatus( (bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Charging" );
+				relay_status = (byte)DeviceRelay.Relay_ON;
+			}
 			else
+			{
 				UpdatePowerStatus( (bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging" );
+				relay_status = (byte)DeviceRelay.Relay_OFF;
+			}
+
 
 		} //END CheckPowerStatus
 
@@ -556,47 +566,50 @@ namespace BatteryPerserve
 			//Check power status before:
 			CheckPowerStatus();
 
-			if (device_status == DeviceStatus.CONNECTED)
+			byte temp_relay_status = relay_status;
+
+			//Check if able to optimize battery &&
+			//Check if Optimize checkbox is checked and also if it is time to always stay charged
+			if (device_status == DeviceStatus.CONNECTED &&
+				button_OptmizeBattery.Text == "ON" &&
+				CheckOptimizationSchedule() == true)
 			{
-				//Check if able to optimize battery &&
-				//Check if Optimize checkbox is checked and also if it is time to always stay charged
-				if (button_OptmizeBattery.Text == "ON" &&
-					CheckOptimizationSchedule() == true)
+				//Stop charging:
+				if (bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100 &&
+					bp_power_info.PowerLineStatus.ToString() == "Online")
 				{
-					//Stop charging:
-					if (bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100 &&
-						bp_power_info.PowerLineStatus.ToString() == "Online")
-					{
-						relay_status = 0x02;
-					}
-					//Start charging:
-					else if (	bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100 &&
-								bp_power_info.PowerLineStatus.ToString() == "Offline")
-					{
-						relay_status = 0x01;
-					}
+					relay_status = (byte)DeviceRelay.Relay_OFF;
+				}
+				//Start charging:
+				else if (	bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100 &&
+							bp_power_info.PowerLineStatus.ToString() == "Offline")
+				{
+					relay_status = (byte)DeviceRelay.Relay_ON;
+				}
+
+
+				if (relay_status != temp_relay_status)
+				{
+					mutex_bo_device.WaitOne();
 
 					//Send out relay status:
 					UDP_SendToClient( packet_manager.msg_type_relay );
 
 					//Give some time for response packet to be received:
-					Thread.Sleep( 1000 );
+					Thread.Sleep( (int)WaitPeriods.StatusWait );
 
 					if (bo_connection.received_response == false) //Didn't receive response packet, lost connection.
 					{
 						UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
 					}
-				}
-				else
-				{
 
-				}
+					//Check power status after:
+					CheckPowerStatus();
 
+					mutex_bo_device.ReleaseMutex();
+
+				} //END relay status changed
 			}
-
-			//Check power status after:
-			CheckPowerStatus();
-
 		} //END CheckPower
 
 

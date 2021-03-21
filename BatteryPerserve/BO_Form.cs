@@ -31,6 +31,36 @@ namespace BatteryPerserve
 		} //END Constructor
 
 		//Form Functions::::::::::::::::::::::::::::::::::::
+		private void OnPowerChange( object s, PowerModeChangedEventArgs e )
+		{
+			switch (e.Mode)
+			{
+				case PowerModes.Resume:
+					{
+						Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
+						watch_power = true;
+						allow_search = true;
+						//Auto Connect & Start Optimizing
+						if (BatOpSettings.auto_connect == true)
+						{
+							button_search_for_device_Click();
+						}
+						break;
+					}
+				case PowerModes.Suspend:
+					{
+						watch_power = false;
+						allow_search = false;
+						if (DeviceStatus.CONNECTED == device_status)
+							UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
+						break;
+					}
+
+
+			}
+		} //END OnPowerChange
+
+
 		private void checkBox_OptimizeChargeTime_CheckedChanged(object sender, EventArgs e)
 		{
 			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
@@ -81,8 +111,8 @@ namespace BatteryPerserve
 			{
 				button_OptmizeBattery.Text = "OFF";
 				button_OptmizeBattery.BackColor = System.Drawing.Color.Red;
-				//Turn relay back on
-				relay_status = 0x01;
+				//Turn relay back on:
+				relay_status = (byte)DeviceRelay.Relay_ON;
 				UDP_SendToClient( packet_manager.msg_type_relay );
 			}
 		} //END Optimize Battery
@@ -90,45 +120,40 @@ namespace BatteryPerserve
 
 		private void Program_Settings_ItemCheck(object sender, ItemCheckEventArgs e)
 		{
+			Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
-			if (Program_Settings.SelectedIndex == 0) //Start program at boot
+			//Start program at boot:
+			if (Program_Settings.SelectedIndex == (int)ProgramSettingsCheckbox.StartProgramBoot)
 			{
-				if (Program_Settings.CheckedIndices.Contains(0) == false) //Not checked, being checked
+				if (Program_Settings.CheckedIndices.Contains( (int)ProgramSettingsCheckbox.StartProgramBoot ) == false) //Not checked, being checked
 					AddToStartup();
 				else //Checked, being removed
 					RemoveFromStartup();
 			}
-			else if (Program_Settings.SelectedIndex == 1) //Auto Connect & Start Optimizing
+			//Auto Connect & Start Optimizing:
+			else if (Program_Settings.SelectedIndex == (int)ProgramSettingsCheckbox.AutoConnectStartOptim)
 			{
-				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-
-				if (Program_Settings.CheckedIndices.Contains(1) == false) //Not checked, being checked
+				if (Program_Settings.CheckedIndices.Contains( (int)ProgramSettingsCheckbox.AutoConnectStartOptim ) == false) //Not checked, being checked
 				{
 					BatOpSettings.auto_connect = true;
 					//Watch_OpenCheck = true;
-
 				}
 				else //Checked, being removed
 				{
 					BatOpSettings.auto_connect = false;
 					//Watch_OpenCheck = false;
-
 				}
-
-				SaveSettings(BatOpSettings);
-
 			}
-			else if (Program_Settings.SelectedIndex == 2)
+			//Start Minimized:
+			else if (Program_Settings.SelectedIndex == (int)ProgramSettingsCheckbox.StartMinimized)
 			{
-				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
-
-				if (Program_Settings.CheckedIndices.Contains(2) == false) //Not checked, being checked
+				if (Program_Settings.CheckedIndices.Contains( (int)ProgramSettingsCheckbox.StartMinimized ) == false) //Not checked, being checked
 					BatOpSettings.start_minimized = true;
 				else //Checked, being removed
 					BatOpSettings.start_minimized = false;
-
-				SaveSettings(BatOpSettings);
 			}
+
+			SaveSettings( BatOpSettings );
 
 		} //END Program_Settings_ItemCheck
 

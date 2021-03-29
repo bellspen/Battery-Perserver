@@ -74,7 +74,10 @@ namespace BatteryPerserve
 		//Class Data>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 		//Delegates:
-		private delegate void SafeCallDelegate( string text, string text2 ); //UpdatePowerInfo
+		private delegate void SafeCallDelegate( string percent,
+												System.Drawing.Color percentage_fore_colour,
+												string charge_status,
+												System.Drawing.Color charge_fore_colour ); //UpdatePowerInfo
 		private delegate void SafeCallDelegate2( DeviceStatus status ); //UpdateDeviceStatus
 		private delegate void SafeCallDelegate3( bool set ); //Set Error Provider, true - set, false - reset
 
@@ -333,7 +336,9 @@ namespace BatteryPerserve
 
 			Thread.Sleep( (int)WaitPeriods.StatusWait );
 
-			if (bo_connection.received_response == false) //Didn't receive response packet, lost connection.
+			if (DeviceStatus.SEARCHING != device_status &&
+				bo_connection.received_response == false) //Didn't receive response packet, lost connection.
+
 			{
 				UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
 			}
@@ -384,7 +389,6 @@ namespace BatteryPerserve
 					timer += (UInt32)WaitPeriods.StatusWait;
 				}
 
-
 				//Set flags:
 				Settings_BatteryOptimizer BatOpSettings = RetrieveSettings();
 
@@ -392,6 +396,8 @@ namespace BatteryPerserve
 				{
 					if (BatOpSettings.auto_connect == true)
 						SetErrorProvider_DeviceStatus( true );
+
+					UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
 				}
 				else if (DeviceStatus.CONNECTED == device_status)
 				{
@@ -426,7 +432,8 @@ namespace BatteryPerserve
 				else if (DeviceStatus.SEARCHING == status)
 				{
 					textBox_device_status.Text = "Searching";
-					button_search_for_device.Enabled = false;
+					//button_search_for_device.Enabled = false;
+					button_search_for_device.Text = "Cancel Search";
 				}
 				else if (DeviceStatus.FOUND == status)
 				{
@@ -496,17 +503,25 @@ namespace BatteryPerserve
 
 
 		//Power Functions>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-		private void UpdatePowerStatus( string percent, string charge_status )
+		private void UpdatePowerStatus( string percent,
+										System.Drawing.Color percentage_fore_colour,
+										string charge_status,
+										System.Drawing.Color charge_fore_colour )
 		{
 			if (Battery_Percentage.InvokeRequired || Battery_LineStatus.InvokeRequired)
 			{
 				var d = new SafeCallDelegate( UpdatePowerStatus );
-				Invoke( d, new object[] { percent, charge_status } );
+				Invoke( d, new object[] {	percent,
+											percentage_fore_colour,
+											charge_status,
+											charge_fore_colour } );
 			}
 			else
 			{
 				Battery_Percentage.Text = percent;
+				Battery_Percentage.ForeColor = percentage_fore_colour;
 				Battery_LineStatus.Text = charge_status;
+				Battery_LineStatus.ForeColor = charge_fore_colour;
 			}
 
 		} //END UpdatePowerStatus
@@ -516,17 +531,41 @@ namespace BatteryPerserve
 		{
 			//Update Battery Info
 			bp_power_info = SystemInformation.PowerStatus; //Get Power Status
+			string percent, charge_status;
+			System.Drawing.Color percentage_fore_colour, charge_fore_colour;
 
 			if (bp_power_info.PowerLineStatus.ToString() == "Online")
 			{
-				UpdatePowerStatus( (bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Charging" );
+				charge_status = "Charging";
+				charge_fore_colour = System.Drawing.Color.Lime;
 				relay_status = (byte)DeviceRelay.Relay_ON;
 			}
 			else
 			{
-				UpdatePowerStatus( (bp_power_info.BatteryLifePercent * 100).ToString() + "%", "Dis-Charging" );
+				charge_status = "Dis-Charging";
+				charge_fore_colour = System.Drawing.Color.Yellow;
 				relay_status = (byte)DeviceRelay.Relay_OFF;
 			}
+
+			percent = (bp_power_info.BatteryLifePercent * 100).ToString() + "%";
+
+			if (bp_power_info.BatteryLifePercent <= 0.15)
+			{
+				percentage_fore_colour = System.Drawing.Color.Red;
+			}
+			else if (bp_power_info.BatteryLifePercent <= 0.30)
+			{
+				percentage_fore_colour = System.Drawing.Color.Orange;
+			}
+			else
+			{
+				percentage_fore_colour = System.Drawing.Color.Lime;
+			}
+
+			UpdatePowerStatus(	percent,
+								percentage_fore_colour,
+								charge_status,
+								charge_fore_colour);
 
 
 		} //END CheckPowerStatus

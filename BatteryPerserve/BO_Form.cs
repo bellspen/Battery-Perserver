@@ -216,7 +216,11 @@ namespace BatteryPerserve
 
 		private void button_search_for_device_Click() //For Simulating click
 		{
-			if (DeviceStatus.CONNECTED != device_status)
+			if (DeviceStatus.SEARCHING == device_status)
+			{
+				allow_search = false;
+			}
+			else if (DeviceStatus.CONNECTED != device_status)
 			{
 				allow_search = true;
 				ThreadPool.QueueUserWorkItem( SearchForDevice );
@@ -227,8 +231,15 @@ namespace BatteryPerserve
 
 		private void button_restore_no_device_Click( object sender, EventArgs e )
 		{
-			UpdateDeviceStatus( DeviceStatus.NO_DEVICE );
-			allow_search = false;
+			DialogResult result;
+			result = MessageBox.Show( "Are you sure you want to reset the Device Connection",
+										"Battery Optimizer",
+										MessageBoxButtons.YesNo );
+			if (DialogResult.Yes == result)
+			{
+				UpdateDeviceStatus( DeviceStatus.NO_DEVICE );
+				allow_search = false;
+			}
 		} //END button_restore_no_device_Click
 
 

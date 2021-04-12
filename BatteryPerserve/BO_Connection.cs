@@ -77,26 +77,24 @@ namespace BatteryPerserve
 
 			if (msg_type == packet_manager.msg_type_relay)
 			{
-				if (0x01 == command[0] || 0x02 == command[0])
-				{
-					relay_status = command[0];
-				}
+				//if (0x01 == command[0] || 0x02 == command[0])
+				//{
+				//	relay_status = command[0];
+				//}
 
 			}
 			else if (msg_type == packet_manager.msg_type_wifi)
 			{
-
+				//Nothing
 			}
 			else if (msg_type == packet_manager.msg_type_name)
 			{
-
-
+				//Nothing
 			}
 			else if (msg_type == packet_manager.msg_type_response)
 			{
 				string temp = System.Text.Encoding.UTF8.GetString( command ); //clean up??
 				string temp2 = temp.Trim();
-
 
 				if (temp2 == bo_connection.latest_packet_sent)
 				{

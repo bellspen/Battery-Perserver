@@ -114,6 +114,7 @@ namespace BatteryPerserve
 
 
 		//Battery/Power:
+		private string bp_powerline_hold; //The power line status to hold. Incase of unexpected charging/discharging changes
 		private PowerStatus bp_power_info;
 
 
@@ -178,10 +179,13 @@ namespace BatteryPerserve
 			mutex_bo_device = new Mutex();
 
 
-			//Misc:
+			//Misc::
 			watch_power = true;
 			allow_search = true;
+			//Get Power status:
 			CheckPowerStatus();
+			//Assume current power line status is what we should hold:
+			bp_powerline_hold = bp_power_info.PowerLineStatus.ToString();
 
 
 			//Check if first time ever running program:
@@ -461,6 +465,7 @@ namespace BatteryPerserve
 				{
 					textBox_device_status.Text = "Connected";
 					button_search_for_device.Enabled = false;
+					button_search_for_device.Text = "Disabled";
 				}
 				else if (DeviceStatus.LOST_CONNECTION == status)
 				{
@@ -538,13 +543,13 @@ namespace BatteryPerserve
 			{
 				charge_status = "Charging";
 				charge_fore_colour = System.Drawing.Color.Lime;
-				relay_status = (byte)DeviceRelay.Relay_ON;
+				//relay_status = (byte)DeviceRelay.Relay_ON;
 			}
 			else
 			{
 				charge_status = "Dis-Charging";
 				charge_fore_colour = System.Drawing.Color.Yellow;
-				relay_status = (byte)DeviceRelay.Relay_OFF;
+				//relay_status = (byte)DeviceRelay.Relay_OFF;
 			}
 
 			percent = (bp_power_info.BatteryLifePercent * 100).ToString() + "%";
@@ -567,7 +572,6 @@ namespace BatteryPerserve
 								charge_status,
 								charge_fore_colour);
 
-
 		} //END CheckPowerStatus
 
 
@@ -584,16 +588,16 @@ namespace BatteryPerserve
 			//Check if Optimize checkbox is checked and also if it is time to always stay charged
 			if (checkBox_OptimizeChargeTime.Checked == false ||
 
-					(Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
-					Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) ||
+				(Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
+				Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay) ||
 
-					(Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
-					Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
-					Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay) ||
+				(Battery_OptimizeChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
+				Battery_NormalChargeTime.Value.TimeOfDay <= DateTime.Now.TimeOfDay &&
+				Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay) ||
 
-					(Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay &&
-					Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay &&
-					Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay))
+				(Battery_OptimizeChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay &&
+				Battery_NormalChargeTime.Value.TimeOfDay >= DateTime.Now.TimeOfDay &&
+				Battery_OptimizeChargeTime.Value.TimeOfDay >= Battery_NormalChargeTime.Value.TimeOfDay))
 				return true;
 			else
 				return false;
@@ -605,7 +609,8 @@ namespace BatteryPerserve
 			//Check power status before:
 			CheckPowerStatus();
 
-			byte temp_relay_status = relay_status;
+			//byte temp_relay_status = relay_status;
+			string temp_power_line_status;
 
 			//Check if able to optimize battery &&
 			//Check if Optimize checkbox is checked and also if it is time to always stay charged
@@ -613,45 +618,55 @@ namespace BatteryPerserve
 				button_OptmizeBattery.Text == "ON" &&
 				CheckOptimizationSchedule() == true)
 			{
+				temp_power_line_status = bp_power_info.PowerLineStatus.ToString();
+
 				//Stop charging:
-				if (bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100 &&
-					bp_power_info.PowerLineStatus.ToString() == "Online")
+				if (//Trigger a discharge:
+					(bp_power_info.BatteryLifePercent >= (float)BatteryMax.Value / 100 &&
+					temp_power_line_status == "Online") ||
+					//Hold the discharge as long as we are greater than min:
+					(bp_power_info.BatteryLifePercent >= (float)BatteryMin.Value / 100 &&
+					bp_powerline_hold == "Offline"))
 				{
 					relay_status = (byte)DeviceRelay.Relay_OFF;
+					bp_powerline_hold = "Offline";
 				}
 				//Start charging:
-				else if (	bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100 &&
-							bp_power_info.PowerLineStatus.ToString() == "Offline")
+				else if (	//Trigger a charge:
+							(bp_power_info.BatteryLifePercent <= (float)BatteryMin.Value / 100 &&
+							temp_power_line_status == "Offline") ||
+							//Hold the charge as long as we are less than max:
+							(bp_power_info.BatteryLifePercent <= (float)BatteryMax.Value &&
+							bp_powerline_hold == "Online"))
 				{
 					relay_status = (byte)DeviceRelay.Relay_ON;
+					bp_powerline_hold = "Online";
 				}
 
 
-				if (relay_status != temp_relay_status)
+				//if (relay_status != temp_relay_status)
+				//{
+				mutex_bo_device.WaitOne();
+
+				//Send out relay status:
+				UDP_SendToClient( packet_manager.msg_type_relay );
+
+				//Give some time for response packet to be received:
+				Thread.Sleep( (int)WaitPeriods.StatusWait );
+
+				if (bo_connection.received_response == false) //Didn't receive response packet, lost connection.
 				{
-					mutex_bo_device.WaitOne();
+					UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
+				}
 
-					//Send out relay status:
-					UDP_SendToClient( packet_manager.msg_type_relay );
+				//Check power status after:
+				CheckPowerStatus();
 
-					//Give some time for response packet to be received:
-					Thread.Sleep( (int)WaitPeriods.StatusWait );
+				mutex_bo_device.ReleaseMutex();
 
-					if (bo_connection.received_response == false) //Didn't receive response packet, lost connection.
-					{
-						UpdateDeviceStatus( DeviceStatus.LOST_CONNECTION );
-					}
-
-					//Check power status after:
-					CheckPowerStatus();
-
-					mutex_bo_device.ReleaseMutex();
-
-				} //END relay status changed
+				//} //END relay status changed
 			}
 		} //END CheckPower
-
-
 
 
 	} //END Class
